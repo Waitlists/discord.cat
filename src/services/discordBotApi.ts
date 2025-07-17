@@ -2,23 +2,30 @@
 const DISCORD_API_BASE = 'https://discord.com/api/v10';
 const DISCORD_CDN = 'https://cdn.discordapp.com';
 
-interface DiscordApiUser {
+export interface DiscordApiUser {
   id: string;
   username: string;
   discriminator: string;
   global_name?: string | null;
   avatar?: string | null;
-  bot?: boolean;
-  system?: boolean;
-  mfa_enabled?: boolean;
   banner?: string | null;
   accent_color?: number | null;
-  locale?: string;
-  verified?: boolean;
-  email?: string | null;
-  flags?: number;
-  premium_type?: number;
   public_flags?: number;
+  flags?: number;
+  banner_color?: string | null;
+  avatar_decoration_data?: any;
+  clan?: {
+    identity_guild_id: string;
+    identity_enabled: boolean;
+    tag: string;
+    badge: string;
+  };
+  primary_guild?: {
+    identity_guild_id: string;
+    identity_enabled: boolean;
+    tag: string;
+    badge: string;
+  };
 }
 
 interface DiscordApiError {
@@ -34,8 +41,12 @@ class DiscordBotService {
 
   constructor() {
     this.botToken = import.meta.env.VITE_DISCORD_BOT_TOKEN;
+    console.log('🔑 Bot token loaded:', this.botToken ? 'Yes' : 'No');
+    
     if (!this.botToken || this.botToken === 'your_discord_bot_token_here') {
-      console.warn('Discord bot token not configured. User data fetching will use fallbacks.');
+      console.warn('⚠️ Discord bot token not configured properly');
+    } else {
+      console.log('✅ Discord bot token configured successfully');
     }
   }
 
@@ -47,9 +58,11 @@ class DiscordBotService {
     // Check rate limiting
     if (this.rateLimitRemaining <= 0 && Date.now() < this.rateLimitReset) {
       const waitTime = this.rateLimitReset - Date.now();
-      console.warn(`Rate limited. Waiting ${waitTime}ms`);
+      console.warn(`⏳ Rate limited. Waiting ${waitTime}ms`);
       await new Promise(resolve => setTimeout(resolve, waitTime));
     }
+
+    console.log(`🌐 Making Discord API request to: ${DISCORD_API_BASE}${endpoint}`);
 
     const response = await fetch(`${DISCORD_API_BASE}${endpoint}`, {
       headers: {
@@ -63,7 +76,11 @@ class DiscordBotService {
     this.rateLimitRemaining = parseInt(response.headers.get('X-RateLimit-Remaining') || '50');
     this.rateLimitReset = parseInt(response.headers.get('X-RateLimit-Reset') || '0') * 1000;
 
+    console.log(`📊 Rate limit remaining: ${this.rateLimitRemaining}`);
+
     if (!response.ok) {
+      console.error(`❌ Discord API Error: ${response.status} ${response.statusText}`);
+      
       if (response.status === 404) {
         throw new Error('User not found');
       } else if (response.status === 401) {
@@ -82,36 +99,49 @@ class DiscordBotService {
       throw new Error(`Discord API Error: ${errorData.message} (${errorData.code})`);
     }
 
-    return response.json();
+    const data = await response.json();
+    console.log('✅ Discord API Response:', data);
+    return data;
   }
 
   async fetchUser(userId: string): Promise<DiscordApiUser | null> {
+    console.log(`👤 Fetching user data for ID: ${userId}`);
+    
     // Check cache first
     if (this.cache.has(userId)) {
+      console.log('💾 Using cached user data');
       return this.cache.get(userId)!;
     }
 
     try {
-      // If no token configured, skip API call and use fallback
+      // If no token configured, use fallback
       if (!this.botToken || this.botToken === 'your_discord_bot_token_here') {
+        console.log('🔄 Using fallback user data (no token)');
         return this.generateFallbackUser(userId);
       }
 
       const userData = await this.makeRequest(`/users/${userId}`);
       
-      // Cache the result
-      this.cache.set(userId, userData);
-      
-      return userData;
-    } catch (error) {
-      // Only log error if it's not about missing token
-      if (!error.message.includes('Discord bot token not configured')) {
-        console.error(`Failed to fetch user ${userId}:`, error);
+      if (userData) {
+        console.log('✅ Successfully fetched user data:', {
+          username: userData.username,
+          global_name: userData.global_name,
+          avatar: userData.avatar
+        });
+        
+        // Cache the result
+        this.cache.set(userId, userData);
+        return userData;
       }
+    } catch (error) {
+      console.error(`❌ Failed to fetch user ${userId}:`, error);
       
-      // Return fallback data
+      // Return fallback data on error
+      console.log('🔄 Using fallback user data (API error)');
       return this.generateFallbackUser(userId);
     }
+
+    return null;
   }
 
   private generateFallbackUser(userId: string): DiscordApiUser {
@@ -138,30 +168,35 @@ class DiscordBotService {
     if (avatarHash) {
       // Determine if it's a GIF or static image
       const extension = avatarHash.startsWith('a_') ? 'gif' : 'png';
-      return `${DISCORD_CDN}/avatars/${userId}/${avatarHash}.${extension}?size=${size}`;
+      const url = `${DISCORD_CDN}/avatars/${userId}/${avatarHash}.${extension}?size=${size}`;
+      console.log(`🖼️ Generated avatar URL: ${url}`);
+      return url;
     }
     
     // Generate default avatar based on Discord's algorithm
     // For new usernames (discriminator 0), use user ID
-    // For legacy usernames, use discriminator
     const defaultAvatarIndex = (parseInt(userId) >> 22) % 6;
-    return `${DISCORD_CDN}/embed/avatars/${defaultAvatarIndex}.png`;
+    const url = `${DISCORD_CDN}/embed/avatars/${defaultAvatarIndex}.png`;
+    console.log(`🖼️ Generated default avatar URL: ${url}`);
+    return url;
   }
 
   getDisplayName(user: DiscordApiUser): string {
-    return user.global_name || user.username;
+    const displayName = user.global_name || user.username;
+    console.log(`📝 Display name for ${user.id}: ${displayName}`);
+    return displayName;
   }
 
   getFullUsername(user: DiscordApiUser): string {
-    if (user.discriminator === '0') {
-      return `@${user.username}`;
-    }
-    return `${user.username}#${user.discriminator}`;
+    const fullUsername = user.discriminator === '0' ? `@${user.username}` : `${user.username}#${user.discriminator}`;
+    console.log(`📝 Full username for ${user.id}: ${fullUsername}`);
+    return fullUsername;
   }
 
   // Clear cache (useful for testing or memory management)
   clearCache(): void {
     this.cache.clear();
+    console.log('🗑️ Cache cleared');
   }
 
   // Get cache stats
@@ -175,6 +210,3 @@ class DiscordBotService {
 
 // Export singleton instance
 export const discordBotService = new DiscordBotService();
-
-// Export types
-export type { DiscordApiUser };

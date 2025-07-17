@@ -43,7 +43,7 @@ const DiscordUserProfile: React.FC<DiscordUserProfileProps> = ({
   if (loading) {
     return (
       <div className={`flex items-center gap-3 ${className}`}>
-        <div className={`${sizeClasses[size]} rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center`}>
+        <div className={`${sizeClasses[size]} rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center animate-pulse`}>
           <Loader2 className={`${iconSizes[size]} text-gray-400 animate-spin`} />
         </div>
         {showUsername && (
@@ -96,6 +96,14 @@ const DiscordUserProfile: React.FC<DiscordUserProfileProps> = ({
   const avatarUrl = discordBotService.getAvatarUrl(user.id, user.avatar, size === 'lg' ? 128 : size === 'md' ? 64 : 32);
   const displayName = discordBotService.getDisplayName(user);
   const fullUsername = discordBotService.getFullUsername(user);
+  
+  console.log(`🎨 Rendering user profile:`, {
+    userId: user.id,
+    displayName,
+    fullUsername,
+    avatarUrl,
+    hasAvatar: !!user.avatar
+  });
 
   return (
     <div 
@@ -107,7 +115,9 @@ const DiscordUserProfile: React.FC<DiscordUserProfileProps> = ({
           src={avatarUrl}
           alt={displayName}
           className="w-full h-full object-cover"
+          onLoad={() => console.log(`✅ Avatar loaded successfully for ${user.id}`)}
           onError={(e) => {
+            console.log(`❌ Avatar failed to load for ${user.id}, using fallback`);
             // Fallback to default avatar on error
             const target = e.target as HTMLImageElement;
             target.src = discordBotService.getAvatarUrl(user.id, null);
