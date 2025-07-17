@@ -472,6 +472,7 @@ app.use((req, res) => {
   });
 });
 
+
 // Start server
 app.listen(PORT, () => {
   console.log(`🚀 Discord API server running on port ${PORT}`);
