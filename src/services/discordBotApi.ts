@@ -1,9 +1,7 @@
 // Discord Bot API service - Backend proxy version
 // This service communicates with our backend server instead of Discord directly
 
-const API_BASE_URL = import.meta.env.DEV 
-  ? 'http://localhost:3001/api' 
-  : '/api'; // In production, backend should be on same domain
+const API_BASE_URL = 'http://localhost:3001/api';
 
 export interface DiscordApiUser {
   id: string;

@@ -3,6 +3,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const compression = require('compression');
+const path = require('path');
 require('dotenv').config();
 
 const app = express();
@@ -11,19 +12,28 @@ const PORT = process.env.PORT || 3001;
 // Discord API configuration
 const DISCORD_API_BASE = 'https://discord.com/api/v10';
 const DISCORD_CDN = 'https://cdn.discordapp.com';
-const BOT_TOKEN = process.env.VITE_DISCORD_BOT_TOKEN;
+const BOT_TOKEN = process.env.VITE_DISCORD_BOT_TOKEN || process.env.DISCORD_BOT_TOKEN;
 
 // Middleware
-app.use(helmet());
+app.use(helmet({
+  crossOriginEmbedderPolicy: false,
+  contentSecurityPolicy: false
+}));
 app.use(compression());
 app.use(morgan('combined'));
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 
     ? ['https://your-domain.com'] 
-    : ['http://localhost:5173', 'https://localhost:5173'],
+    : ['http://localhost:5173', 'https://localhost:5173', 'http://127.0.0.1:5173'],
   credentials: true
 }));
 app.use(express.json());
+
+// Add request logging for debugging
+app.use((req, res, next) => {
+  console.log(`📥 ${req.method} ${req.path} - ${new Date().toISOString()}`);
+  next();
+});
 
 // Rate limiting store
 const rateLimitStore = new Map();
