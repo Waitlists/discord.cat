@@ -92,6 +92,11 @@ class DiscordBotService {
     }
 
     try {
+      // If no token configured, skip API call and use fallback
+      if (!this.botToken || this.botToken === 'your_discord_bot_token_here') {
+        return this.generateFallbackUser(userId);
+      }
+
       const userData = await this.makeRequest(`/users/${userId}`);
       
       // Cache the result
@@ -99,7 +104,10 @@ class DiscordBotService {
       
       return userData;
     } catch (error) {
-      console.error(`Failed to fetch user ${userId}:`, error);
+      // Only log error if it's not about missing token
+      if (!error.message.includes('Discord bot token not configured')) {
+        console.error(`Failed to fetch user ${userId}:`, error);
+      }
       
       // Return fallback data
       return this.generateFallbackUser(userId);
