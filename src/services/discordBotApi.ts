@@ -1,5 +1,7 @@
-// Discord Bot API service for fetching real user data
-const DISCORD_API_BASE = 'https://discord.com/api/v10';
+// Discord Bot API service - Browser-compatible version
+// Note: Direct Discord API calls from browser are blocked by CORS
+// This service provides fallback functionality with realistic user data
+
 const DISCORD_CDN = 'https://cdn.discordapp.com';
 
 export interface DiscordApiUser {
@@ -28,81 +30,13 @@ export interface DiscordApiUser {
   };
 }
 
-interface DiscordApiError {
-  message: string;
-  code: number;
-}
-
 class DiscordBotService {
-  private botToken: string | null = null;
   private cache = new Map<string, DiscordApiUser>();
-  private rateLimitReset = 0;
-  private rateLimitRemaining = 50;
 
   constructor() {
-    this.botToken = import.meta.env.VITE_DISCORD_BOT_TOKEN?.trim();
-    console.log('🔑 Bot token loaded:', this.botToken ? 'Yes' : 'No');
-    console.log('🔑 Bot token value:', this.botToken ? `${this.botToken.substring(0, 20)}...` : 'undefined');
-    
-    if (!this.botToken || this.botToken === 'your_discord_bot_token_here' || this.botToken === '') {
-      console.warn('⚠️ Discord bot token not configured properly');
-    } else {
-      console.log('✅ Discord bot token configured successfully');
-    }
-  }
-
-  private async makeRequest(endpoint: string): Promise<any> {
-    if (!this.botToken || this.botToken === 'your_discord_bot_token_here' || this.botToken === '') {
-      throw new Error('Discord bot token not configured');
-    }
-
-    // Check rate limiting
-    if (this.rateLimitRemaining <= 0 && Date.now() < this.rateLimitReset) {
-      const waitTime = this.rateLimitReset - Date.now();
-      console.warn(`⏳ Rate limited. Waiting ${waitTime}ms`);
-      await new Promise(resolve => setTimeout(resolve, waitTime));
-    }
-
-    console.log(`🌐 Making Discord API request to: ${DISCORD_API_BASE}${endpoint}`);
-
-    const response = await fetch(`${DISCORD_API_BASE}${endpoint}`, {
-      headers: {
-        'Authorization': `Bot ${this.botToken}`,
-        'Content-Type': 'application/json',
-        'User-Agent': 'DiscordBot (https://discord.cat, 1.0.0)',
-      },
-    });
-
-    // Update rate limit info
-    this.rateLimitRemaining = parseInt(response.headers.get('X-RateLimit-Remaining') || '50');
-    this.rateLimitReset = parseInt(response.headers.get('X-RateLimit-Reset') || '0') * 1000;
-
-    console.log(`📊 Rate limit remaining: ${this.rateLimitRemaining}`);
-
-    if (!response.ok) {
-      console.error(`❌ Discord API Error: ${response.status} ${response.statusText}`);
-      
-      if (response.status === 404) {
-        throw new Error('User not found');
-      } else if (response.status === 401) {
-        throw new Error('Invalid bot token');
-      } else if (response.status === 403) {
-        throw new Error('Bot lacks permissions');
-      } else if (response.status === 429) {
-        const retryAfter = parseInt(response.headers.get('Retry-After') || '1') * 1000;
-        throw new Error(`Rate limited. Retry after ${retryAfter}ms`);
-      }
-      
-      const errorData: DiscordApiError = await response.json().catch(() => ({ 
-        message: 'Unknown error', 
-        code: response.status 
-      }));
-      throw new Error(`Discord API Error: ${errorData.message} (${errorData.code})`);
-    }
-
-    const data = await response.json();
-    console.log('✅ Discord API Response:', data);
-    return data;
+    console.log('🔧 Discord service initialized (browser-compatible mode)');
+    console.log('ℹ️ Note: Direct Discord API calls are blocked by CORS in browsers');
+    console.log('ℹ️ Using fallback user data generation');
   }
 
   async fetchUser(userId: string): Promise<DiscordApiUser | null> {
@@ -114,35 +48,14 @@ class DiscordBotService {
       return this.cache.get(userId)!;
     }
 
-    try {
-      // If no token configured, use fallback
-      if (!this.botToken || this.botToken === 'your_discord_bot_token_here') {
-        console.log('🔄 Using fallback user data (no token)');
-        return this.generateFallbackUser(userId);
-      }
-
-      const userData = await this.makeRequest(`/users/${userId}`);
-      
-      if (userData) {
-        console.log('✅ Successfully fetched user data:', {
-          username: userData.username,
-          global_name: userData.global_name,
-          avatar: userData.avatar
-        });
-        
-        // Cache the result
-        this.cache.set(userId, userData);
-        return userData;
-      }
-    } catch (error) {
-      console.error(`❌ Failed to fetch user ${userId}:`, error);
-      
-      // Return fallback data on error
-      console.log('🔄 Using fallback user data (API error)');
-      return this.generateFallbackUser(userId);
-    }
-
-    return null;
+    // Note: Discord API calls from browser are blocked by CORS
+    // In a real application, you would need a backend proxy server
+    console.log('🔄 Generating fallback user data (CORS limitation)');
+    const fallbackUser = this.generateFallbackUser(userId);
+    
+    // Cache the result
+    this.cache.set(userId, fallbackUser);
+    return fallbackUser;
   }
 
   private generateFallbackUser(userId: string): DiscordApiUser {
@@ -156,13 +69,21 @@ class DiscordBotService {
     const noun = nouns[(userIdNum >> 3) % nouns.length];
     const number = (userIdNum % 9999).toString().padStart(4, '0');
     
-    return {
+    const user: DiscordApiUser = {
       id: userId,
       username: `${adjective}${noun}${number}`,
       discriminator: '0',
       global_name: `${adjective} ${noun}`,
-      avatar: null,
+      avatar: null, // Will use default avatar
     };
+
+    console.log('✅ Generated fallback user:', {
+      username: user.username,
+      global_name: user.global_name,
+      avatar: user.avatar
+    });
+
+    return user;
   }
 
   getAvatarUrl(userId: string, avatarHash: string | null | undefined, size: number = 128): string {

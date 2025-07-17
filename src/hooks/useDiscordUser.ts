@@ -29,7 +29,7 @@ export const useDiscordUser = (userId: string): UseDiscordUserResult => {
     } finally {
       setLoading(false);
     }
-  }, [userId]);
+  }, [userId]); // Only depend on userId
 
   useEffect(() => {
     fetchUser();
