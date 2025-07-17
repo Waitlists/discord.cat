@@ -93,7 +93,6 @@ const DiscordUserProfile: React.FC<DiscordUserProfileProps> = ({
     );
   }
 
-  const avatarUrl = discordBotService.getAvatarUrl(user.id, user.avatar, size === 'lg' ? 128 : size === 'md' ? 64 : 32);
   const avatarUrl = discordBotService.getAvatarUrl(user, size === 'lg' ? 128 : size === 'md' ? 64 : 32);
   const displayName = discordBotService.getDisplayName(user);
   const fullUsername = discordBotService.getFullUsername(user);
