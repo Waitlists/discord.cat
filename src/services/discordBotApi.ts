@@ -40,10 +40,11 @@ class DiscordBotService {
   private rateLimitRemaining = 50;
 
   constructor() {
-    this.botToken = import.meta.env.VITE_DISCORD_BOT_TOKEN;
+    this.botToken = import.meta.env.VITE_DISCORD_BOT_TOKEN?.trim();
     console.log('🔑 Bot token loaded:', this.botToken ? 'Yes' : 'No');
+    console.log('🔑 Bot token value:', this.botToken ? `${this.botToken.substring(0, 20)}...` : 'undefined');
     
-    if (!this.botToken || this.botToken === 'your_discord_bot_token_here') {
+    if (!this.botToken || this.botToken === 'your_discord_bot_token_here' || this.botToken === '') {
       console.warn('⚠️ Discord bot token not configured properly');
     } else {
       console.log('✅ Discord bot token configured successfully');
@@ -51,7 +52,7 @@ class DiscordBotService {
   }
 
   private async makeRequest(endpoint: string): Promise<any> {
-    if (!this.botToken || this.botToken === 'your_discord_bot_token_here') {
+    if (!this.botToken || this.botToken === 'your_discord_bot_token_here' || this.botToken === '') {
       throw new Error('Discord bot token not configured');
     }
 
