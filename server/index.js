@@ -14,6 +14,7 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+const HOST = '0.0.0.0';
 
 // Discord API configuration
 const DISCORD_API_BASE = 'https://discord.com/api/v10';
@@ -474,7 +475,7 @@ app.use((req, res) => {
 
 
 // Start server
-app.listen(PORT, () => {
+app.listen(PORT, HOST, () => {
   console.log(`🚀 Discord API server running on port ${PORT}`);
   console.log(`🔑 Bot token configured: ${!!BOT_TOKEN}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
