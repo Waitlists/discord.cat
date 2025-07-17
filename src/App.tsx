@@ -5,6 +5,7 @@ import ThemeToggle from './components/ThemeToggle';
 import StatsBar from './components/StatsBar';
 import SearchInterface from './components/SearchInterface';
 import MessageDisplay from './components/MessageDisplay';
+import DiscordUserCard from './components/DiscordUserCard';
 import { useTheme } from './hooks/useTheme';
 import messagesData from './data/discord_messages.json';
 
@@ -24,6 +25,7 @@ function App() {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
 
   // Total stats - always show database totals, never filtered results
   const stats: MessageStats = useMemo(() => {
@@ -75,9 +77,7 @@ function App() {
   };
 
   const handleAuthorClick = (authorId: string) => {
-    setFilters(prev => ({ ...prev, authorId }));
-    setCurrentPage(1);
-    performSearch();
+    setSelectedUserId(authorId);
   };
 
   const handleChannelClick = (channelId: string) => {
@@ -162,6 +162,16 @@ function App() {
           <p className="text-gray-600 dark:text-gray-400 max-w-md mx-auto">
             Enter your search criteria above to discover Discord messages, users, and conversations.
           </p>
+        </div>
+      )}
+
+      {/* User Profile Modal */}
+      {selectedUserId && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <DiscordUserCard 
+            userId={selectedUserId} 
+            onClose={() => setSelectedUserId(null)}
+          />
         </div>
       )}
 

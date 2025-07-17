@@ -1,7 +1,7 @@
 import React from 'react';
-import { Clock, Copy, Hash, Server } from 'lucide-react';
+import { Clock, Copy, Hash, Server, User } from 'lucide-react';
 import { DiscordMessage } from '../types';
-import UserAvatar from './UserAvatar';
+import DiscordUserProfile from './DiscordUserProfile';
 import Pagination from './Pagination';
 
 interface MessageDisplayProps {
@@ -77,56 +77,58 @@ const MessageDisplay: React.FC<MessageDisplayProps> = ({
             {/* Header */}
             <div className="flex items-start justify-between mb-4">
               <div className="flex items-center gap-4">
-                <UserAvatar 
+                <DiscordUserProfile 
                   userId={message.author_id}
-                  guildId={message.guild_id}
                   size="md"
                   showUsername={true}
+                  showFullUsername={true}
                   onClick={() => onAuthorClick(message.author_id)}
                 />
-                <div>
-                  <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mt-1">
-                    <Clock className="w-3 h-3" />
-                    {formatTimestamp(message.timestamp)}
-                  </div>
-                </div>
               </div>
               
-              <button
-                onClick={() => copyToClipboard(message.content)}
-                className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-200 opacity-0 group-hover:opacity-100"
-              >
-                <Copy className="w-4 h-4" />
-              </button>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                  <Clock className="w-3 h-3" />
+                  {formatTimestamp(message.timestamp)}
+                </div>
+                
+                <button
+                  onClick={() => copyToClipboard(message.content)}
+                  className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-200 opacity-0 group-hover:opacity-100"
+                >
+                  <Copy className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
             {/* Content */}
-            <div className="mb-4 ml-14">
+            <div className="mb-4 ml-16">
               <p className="text-gray-800 dark:text-gray-200 leading-relaxed text-lg">
                 {message.content}
               </p>
             </div>
 
             {/* Tags */}
-            <div className="flex flex-wrap gap-3 ml-14">
+            <div className="flex flex-wrap gap-3 ml-16">
               <button
                 onClick={() => onChannelClick(message.channel_id)}
-                className="inline-flex items-center gap-2 px-3 py-1 text-sm text-green-700 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 transition-colors duration-200"
+                className="inline-flex items-center gap-2 px-3 py-1 text-sm text-green-700 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 transition-colors duration-200 bg-green-50 dark:bg-green-900/20 rounded-full"
               >
                 <Hash className="w-3 h-3" />
-                {message.channel_id}
+                Channel: {message.channel_id}
               </button>
 
               <button
                 onClick={() => onGuildClick(message.guild_id)}
-                className="inline-flex items-center gap-2 px-3 py-1 text-sm text-purple-700 dark:text-purple-400 hover:text-purple-800 dark:hover:text-purple-300 transition-colors duration-200"
+                className="inline-flex items-center gap-2 px-3 py-1 text-sm text-purple-700 dark:text-purple-400 hover:text-purple-800 dark:hover:text-purple-300 transition-colors duration-200 bg-purple-50 dark:bg-purple-900/20 rounded-full"
               >
                 <Server className="w-3 h-3" />
-                {message.guild_id}
+                Guild: {message.guild_id}
               </button>
 
-              <span className="inline-flex items-center gap-2 px-3 py-1 text-gray-600 dark:text-gray-400 text-sm">
-                User ID: {message.author_id}
+              <span className="inline-flex items-center gap-2 px-3 py-1 text-gray-600 dark:text-gray-400 text-sm bg-gray-50 dark:bg-gray-800 rounded-full">
+                <User className="w-3 h-3" />
+                ID: {message.author_id}
               </span>
             </div>
           </div>
