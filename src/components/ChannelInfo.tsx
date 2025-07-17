@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Hash } from 'lucide-react';
-import { DiscordChannel } from '../types';
-import { useDiscordData } from '../hooks/useDiscordData';
+import { discordBotService, DiscordApiChannel } from '../services/discordBotApi';
 
 interface ChannelInfoProps {
   channelId: string;
@@ -14,24 +13,24 @@ const ChannelInfo: React.FC<ChannelInfoProps> = ({
   showName = true,
   onClick 
 }) => {
-  const { fetchChannel, getChannel, isChannelLoading } = useDiscordData();
-  const [channel, setChannel] = useState<DiscordChannel | null>(null);
+  const [channel, setChannel] = useState<DiscordApiChannel | null>(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const loadChannel = async () => {
-      const cachedChannel = getChannel(channelId);
-      if (cachedChannel) {
-        setChannel(cachedChannel);
-      } else {
-        const fetchedChannel = await fetchChannel(channelId);
-        if (fetchedChannel) {
-          setChannel(fetchedChannel);
-        }
+      setLoading(true);
+      try {
+        const channelData = await discordBotService.fetchChannel(channelId);
+        setChannel(channelData);
+      } catch (error) {
+        console.error('Error loading channel:', error);
+      } finally {
+        setLoading(false);
       }
     };
 
     loadChannel();
-  }, [channelId, fetchChannel, getChannel]);
+  }, [channelId]);
 
   const displayName = channel?.name || `channel-${channelId.slice(-4)}`;
 
@@ -44,7 +43,7 @@ const ChannelInfo: React.FC<ChannelInfoProps> = ({
       
       {showName && (
         <span className="text-sm font-medium text-green-700 dark:text-green-400">
-          {isChannelLoading(channelId) ? (
+          {loading ? (
             <div className="w-16 h-4 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" />
           ) : (
             displayName

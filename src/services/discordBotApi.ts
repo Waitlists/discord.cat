@@ -31,10 +31,34 @@ export interface DiscordApiUser {
   cached?: boolean;
 }
 
+export interface DiscordApiGuild {
+  id: string;
+  name: string;
+  icon?: string | null;
+  description?: string | null;
+  member_count?: number;
+  presence_count?: number;
+  cached?: boolean;
+}
+
+export interface DiscordApiChannel {
+  id: string;
+  name: string;
+  type: number;
+  guild_id?: string | null;
+  topic?: string | null;
+  position?: number;
+  cached?: boolean;
+}
+
 class DiscordBotService {
   private cache = new Map<string, { user: DiscordApiUser; timestamp: number }>();
+  private guildCache = new Map<string, { guild: DiscordApiGuild; timestamp: number }>();
+  private channelCache = new Map<string, { channel: DiscordApiChannel; timestamp: number }>();
   private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutes
   private pendingRequests = new Map<string, Promise<DiscordApiUser | null>>();
+  private pendingGuildRequests = new Map<string, Promise<DiscordApiGuild | null>>();
+  private pendingChannelRequests = new Map<string, Promise<DiscordApiChannel | null>>();
 
   constructor() {
     console.log('🔧 Discord service initialized (backend proxy mode)');
@@ -189,6 +213,158 @@ class DiscordBotService {
     return results;
   }
 
+  async fetchGuild(guildId: string): Promise<DiscordApiGuild | null> {
+    console.log(`🏰 Fetching guild data for ID: ${guildId}`);
+    
+    // Check cache first
+    const cached = this.getCachedGuild(guildId);
+    if (cached) {
+      console.log('💾 Using cached guild data');
+      return cached;
+    }
+
+    // Check if request is already pending
+    if (this.pendingGuildRequests.has(guildId)) {
+      console.log('⏳ Guild request already pending, waiting...');
+      return this.pendingGuildRequests.get(guildId)!;
+    }
+
+    // Create new request
+    const requestPromise = this.makeGuildRequest(guildId);
+    this.pendingGuildRequests.set(guildId, requestPromise);
+
+    try {
+      const result = await requestPromise;
+      return result;
+    } finally {
+      this.pendingGuildRequests.delete(guildId);
+    }
+  }
+
+  private async makeGuildRequest(guildId: string): Promise<DiscordApiGuild | null> {
+    try {
+      console.log(`🌐 Making backend request for guild: ${guildId}`);
+      
+      const response = await fetch(`${API_BASE_URL}/discord/guilds/${guildId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error(`❌ Backend guild request failed:`, {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorData
+        });
+        
+        if (response.status === 404) {
+          console.log('👻 Guild not found');
+          return null;
+        }
+        
+        throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const guildData: DiscordApiGuild = await response.json();
+      console.log(`✅ Successfully fetched guild:`, {
+        id: guildData.id,
+        name: guildData.name,
+        cached: guildData.cached
+      });
+
+      // Cache the result
+      this.guildCache.set(guildId, {
+        guild: guildData,
+        timestamp: Date.now()
+      });
+
+      return guildData;
+
+    } catch (error) {
+      console.error(`❌ Failed to fetch guild ${guildId}:`, error);
+      return null;
+    }
+  }
+
+  async fetchChannel(channelId: string): Promise<DiscordApiChannel | null> {
+    console.log(`📺 Fetching channel data for ID: ${channelId}`);
+    
+    // Check cache first
+    const cached = this.getCachedChannel(channelId);
+    if (cached) {
+      console.log('💾 Using cached channel data');
+      return cached;
+    }
+
+    // Check if request is already pending
+    if (this.pendingChannelRequests.has(channelId)) {
+      console.log('⏳ Channel request already pending, waiting...');
+      return this.pendingChannelRequests.get(channelId)!;
+    }
+
+    // Create new request
+    const requestPromise = this.makeChannelRequest(channelId);
+    this.pendingChannelRequests.set(channelId, requestPromise);
+
+    try {
+      const result = await requestPromise;
+      return result;
+    } finally {
+      this.pendingChannelRequests.delete(channelId);
+    }
+  }
+
+  private async makeChannelRequest(channelId: string): Promise<DiscordApiChannel | null> {
+    try {
+      console.log(`🌐 Making backend request for channel: ${channelId}`);
+      
+      const response = await fetch(`${API_BASE_URL}/discord/channels/${channelId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error(`❌ Backend channel request failed:`, {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorData
+        });
+        
+        if (response.status === 404) {
+          console.log('👻 Channel not found');
+          return null;
+        }
+        
+        throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const channelData: DiscordApiChannel = await response.json();
+      console.log(`✅ Successfully fetched channel:`, {
+        id: channelData.id,
+        name: channelData.name,
+        cached: channelData.cached
+      });
+
+      // Cache the result
+      this.channelCache.set(channelId, {
+        channel: channelData,
+        timestamp: Date.now()
+      });
+
+      return channelData;
+
+    } catch (error) {
+      console.error(`❌ Failed to fetch channel ${channelId}:`, error);
+      return null;
+    }
+  }
+
   private getCachedUser(userId: string): DiscordApiUser | null {
     const cached = this.cache.get(userId);
     if (cached && Date.now() - cached.timestamp < this.CACHE_TTL) {
@@ -197,6 +373,32 @@ class DiscordBotService {
     
     if (cached) {
       this.cache.delete(userId); // Remove expired cache
+    }
+    
+    return null;
+  }
+
+  private getCachedGuild(guildId: string): DiscordApiGuild | null {
+    const cached = this.guildCache.get(guildId);
+    if (cached && Date.now() - cached.timestamp < this.CACHE_TTL) {
+      return cached.guild;
+    }
+    
+    if (cached) {
+      this.guildCache.delete(guildId); // Remove expired cache
+    }
+    
+    return null;
+  }
+
+  private getCachedChannel(channelId: string): DiscordApiChannel | null {
+    const cached = this.channelCache.get(channelId);
+    if (cached && Date.now() - cached.timestamp < this.CACHE_TTL) {
+      return cached.channel;
+    }
+    
+    if (cached) {
+      this.channelCache.delete(channelId); // Remove expired cache
     }
     
     return null;
@@ -224,14 +426,27 @@ class DiscordBotService {
   // Clear cache (useful for testing or memory management)
   clearCache(): void {
     this.cache.clear();
+    this.guildCache.clear();
+    this.channelCache.clear();
     console.log('🗑️ Cache cleared');
   }
 
   // Get cache stats
-  getCacheStats(): { size: number; users: string[] } {
+  getCacheStats(): { 
+    userCacheSize: number; 
+    guildCacheSize: number; 
+    channelCacheSize: number; 
+    users: string[];
+    guilds: string[];
+    channels: string[];
+  } {
     return {
-      size: this.cache.size,
+      userCacheSize: this.cache.size,
+      guildCacheSize: this.guildCache.size,
+      channelCacheSize: this.channelCache.size,
       users: Array.from(this.cache.keys()),
+      guilds: Array.from(this.guildCache.keys()),
+      channels: Array.from(this.channelCache.keys()),
     };
   }
 

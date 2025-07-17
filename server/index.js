@@ -77,6 +77,8 @@ const rateLimit = (req, res, next) => {
 
 // Cache for Discord API responses
 const userCache = new Map();
+const guildCache = new Map();
+const channelCache = new Map();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 // Helper function to make Discord API requests
@@ -123,6 +125,82 @@ function getAvatarUrl(userId, avatarHash, size = 128) {
   // Discord's default avatar algorithm
   const defaultAvatarIndex = (parseInt(userId) >> 22) % 6;
   return `${DISCORD_CDN}/embed/avatars/${defaultAvatarIndex}.png`;
+}
+
+// Get guild information
+async function getGuildInfo(guildId) {
+  // Check cache first
+  const cached = guildCache.get(guildId);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return cached.data;
+  }
+
+  try {
+    console.log(`🏰 Fetching guild ${guildId} from Discord API`);
+    const guildData = await makeDiscordRequest(`/guilds/${guildId}`);
+    
+    // Cache the response
+    guildCache.set(guildId, {
+      data: {
+        id: guildData.id,
+        name: guildData.name,
+        icon: guildData.icon,
+        description: guildData.description,
+        member_count: guildData.approximate_member_count,
+        presence_count: guildData.approximate_presence_count
+      },
+      timestamp: Date.now()
+    });
+
+    return guildCache.get(guildId).data;
+  } catch (error) {
+    console.error(`❌ Error fetching guild ${guildId}:`, error.message);
+    // Return fallback data
+    return {
+      id: guildId,
+      name: `Server ${guildId.slice(-4)}`,
+      icon: null,
+      description: null
+    };
+  }
+}
+
+// Get channel information
+async function getChannelInfo(channelId) {
+  // Check cache first
+  const cached = channelCache.get(channelId);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return cached.data;
+  }
+
+  try {
+    console.log(`📺 Fetching channel ${channelId} from Discord API`);
+    const channelData = await makeDiscordRequest(`/channels/${channelId}`);
+    
+    // Cache the response
+    channelCache.set(channelId, {
+      data: {
+        id: channelData.id,
+        name: channelData.name,
+        type: channelData.type,
+        guild_id: channelData.guild_id,
+        topic: channelData.topic,
+        position: channelData.position
+      },
+      timestamp: Date.now()
+    });
+
+    return channelCache.get(channelId).data;
+  } catch (error) {
+    console.error(`❌ Error fetching channel ${channelId}:`, error.message);
+    // Return fallback data
+    return {
+      id: channelId,
+      name: `channel-${channelId.slice(-4)}`,
+      type: 0,
+      guild_id: null
+    };
+  }
 }
 
 // Routes
@@ -199,6 +277,58 @@ app.get('/api/discord/users/:userId', rateLimit, async (req, res) => {
       error: 'Failed to fetch user',
       message: error.message,
       userId: req.params.userId
+    });
+  }
+});
+
+// Get Discord guild by ID
+app.get('/api/discord/guilds/:guildId', rateLimit, async (req, res) => {
+  try {
+    const { guildId } = req.params;
+
+    // Validate guild ID
+    if (!/^\d{17,19}$/.test(guildId)) {
+      return res.status(400).json({
+        error: 'Invalid guild ID',
+        message: 'Guild ID must be a valid Discord snowflake (17-19 digits)'
+      });
+    }
+
+    const guildData = await getGuildInfo(guildId);
+    res.json(guildData);
+
+  } catch (error) {
+    console.error(`❌ Error fetching guild ${req.params.guildId}:`, error.message);
+    res.status(500).json({
+      error: 'Failed to fetch guild',
+      message: error.message,
+      guildId: req.params.guildId
+    });
+  }
+});
+
+// Get Discord channel by ID
+app.get('/api/discord/channels/:channelId', rateLimit, async (req, res) => {
+  try {
+    const { channelId } = req.params;
+
+    // Validate channel ID
+    if (!/^\d{17,19}$/.test(channelId)) {
+      return res.status(400).json({
+        error: 'Invalid channel ID',
+        message: 'Channel ID must be a valid Discord snowflake (17-19 digits)'
+      });
+    }
+
+    const channelData = await getChannelInfo(channelId);
+    res.json(channelData);
+
+  } catch (error) {
+    console.error(`❌ Error fetching channel ${req.params.channelId}:`, error.message);
+    res.status(500).json({
+      error: 'Failed to fetch channel',
+      message: error.message,
+      channelId: req.params.channelId
     });
   }
 });
@@ -298,6 +428,8 @@ app.get('/api/cache/stats', (req, res) => {
 
   res.json({
     totalEntries: userCache.size,
+    guildCacheEntries: guildCache.size,
+    channelCacheEntries: channelCache.size,
     validEntries,
     expiredEntries,
     cacheTtlMs: CACHE_TTL,

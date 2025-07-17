@@ -1,8 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Server } from 'lucide-react';
-import { DiscordGuild } from '../types';
-import { useDiscordData } from '../hooks/useDiscordData';
-import { getGuildIconUrl } from '../services/discordApi';
+import { discordBotService, DiscordApiGuild } from '../services/discordBotApi';
 
 interface GuildInfoProps {
   guildId: string;
@@ -15,26 +13,26 @@ const GuildInfo: React.FC<GuildInfoProps> = ({
   showName = true,
   onClick 
 }) => {
-  const { fetchGuild, getGuild, isGuildLoading } = useDiscordData();
-  const [guild, setGuild] = useState<DiscordGuild | null>(null);
+  const [guild, setGuild] = useState<DiscordApiGuild | null>(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const loadGuild = async () => {
-      const cachedGuild = getGuild(guildId);
-      if (cachedGuild) {
-        setGuild(cachedGuild);
-      } else {
-        const fetchedGuild = await fetchGuild(guildId);
-        if (fetchedGuild) {
-          setGuild(fetchedGuild);
-        }
+      setLoading(true);
+      try {
+        const guildData = await discordBotService.fetchGuild(guildId);
+        setGuild(guildData);
+      } catch (error) {
+        console.error('Error loading guild:', error);
+      } finally {
+        setLoading(false);
       }
     };
 
     loadGuild();
-  }, [guildId, fetchGuild, getGuild]);
+  }, [guildId]);
 
-  const iconUrl = guild?.icon ? getGuildIconUrl(guildId, guild.icon) : null;
+  const iconUrl = guild?.icon ? `https://cdn.discordapp.com/icons/${guildId}/${guild.icon}.png?size=64` : null;
   const displayName = guild?.name || `Server ${guildId.slice(-4)}`;
 
   return (
@@ -43,7 +41,7 @@ const GuildInfo: React.FC<GuildInfoProps> = ({
       onClick={onClick}
     >
       <div className="w-5 h-5 rounded bg-purple-600 flex items-center justify-center overflow-hidden">
-        {isGuildLoading(guildId) ? (
+        {loading ? (
           <div className="w-full h-full bg-gray-200 dark:bg-gray-700 animate-pulse" />
         ) : iconUrl ? (
           <img
