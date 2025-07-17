@@ -9,27 +9,11 @@ import DiscordUserCard from './components/DiscordUserCard';
 import { useTheme } from './hooks/useTheme';
 
 // Import all message chunks
-import messages11 from './data/discord_messages11.json';
-import messages12 from './data/discord_messages12.json';
-import messages13 from './data/discord_messages13.json';
-import messages14 from './data/discord_messages14.json';
-import messages15 from './data/discord_messages15.json';
-import messages16 from './data/discord_messages16.json';
-import messages17 from './data/discord_messages17.json';
-import messages18 from './data/discord_messages18.json';
 import messages19 from './data/discord_messages19.json';
 import messages20 from './data/discord_messages20.json';
 
 // Combine all message chunks and sort by timestamp (newest first)
 const messagesData = [
-  ...messages11,
-  ...messages12,
-  ...messages13,
-  ...messages14,
-  ...messages15,
-  ...messages16,
-  ...messages17,
-  ...messages18,
   ...messages19,
   ...messages20,
 ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());

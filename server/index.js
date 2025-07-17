@@ -27,12 +27,19 @@ app.use(helmet({
 }));
 app.use(compression());
 app.use(morgan('combined'));
-app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
-    ? ['https://your-domain.com'] 
-    : ['http://localhost:5173', 'https://localhost:5173', 'http://127.0.0.1:5173'],
-  credentials: true
-}));
+app.use(
+  cors({
+    origin:
+      process.env.NODE_ENV === 'production'
+        ? ['https://your-domain.com']
+        : [
+            'http://localhost:5173',
+            'https://localhost:5173',
+            'http://127.0.0.1:5173'
+          ],
+    credentials: true
+  })
+);
 app.use(express.json());
 
 // Add request logging for debugging
@@ -50,28 +57,28 @@ const RATE_LIMIT_MAX_REQUESTS = 50;
 const rateLimit = (req, res, next) => {
   const clientId = req.ip;
   const now = Date.now();
-  
+
   if (!rateLimitStore.has(clientId)) {
     rateLimitStore.set(clientId, { requests: [], lastCleanup: now });
   }
-  
+
   const clientData = rateLimitStore.get(clientId);
-  
+
   // Clean old requests
   clientData.requests = clientData.requests.filter(
-    timestamp => now - timestamp < RATE_LIMIT_WINDOW
+    (timestamp) => now - timestamp < RATE_LIMIT_WINDOW
   );
-  
+
   if (clientData.requests.length >= RATE_LIMIT_MAX_REQUESTS) {
     return res.status(429).json({
       error: 'Rate limit exceeded',
       message: `Maximum ${RATE_LIMIT_MAX_REQUESTS} requests per minute`
     });
   }
-  
+
   clientData.requests.push(now);
   rateLimitStore.set(clientId, clientData);
-  
+
   next();
 };
 
@@ -89,7 +96,7 @@ async function makeDiscordRequest(endpoint) {
 
   const response = await fetch(`${DISCORD_API_BASE}${endpoint}`, {
     headers: {
-      'Authorization': `Bot ${BOT_TOKEN}`,
+      Authorization: `Bot ${BOT_TOKEN}`,
       'User-Agent': 'DiscordCat/1.0.0 (https://discord.cat)',
       'Content-Type': 'application/json'
     }
@@ -98,7 +105,7 @@ async function makeDiscordRequest(endpoint) {
   if (!response.ok) {
     const errorText = await response.text();
     console.error(`Discord API Error ${response.status}:`, errorText);
-    
+
     if (response.status === 401) {
       throw new Error('Invalid Discord bot token');
     } else if (response.status === 403) {
@@ -121,7 +128,7 @@ function getAvatarUrl(userId, avatarHash, size = 128) {
     const extension = avatarHash.startsWith('a_') ? 'gif' : 'png';
     return `${DISCORD_CDN}/avatars/${userId}/${avatarHash}.${extension}?size=${size}`;
   }
-  
+
   // Discord's default avatar algorithm
   const defaultAvatarIndex = (parseInt(userId) >> 22) % 6;
   return `${DISCORD_CDN}/embed/avatars/${defaultAvatarIndex}.png`;
@@ -138,7 +145,7 @@ async function getGuildInfo(guildId) {
   try {
     console.log(`🏰 Fetching guild ${guildId} from Discord API`);
     const guildData = await makeDiscordRequest(`/guilds/${guildId}`);
-    
+
     // Cache the response
     guildCache.set(guildId, {
       data: {
@@ -176,7 +183,7 @@ async function getChannelInfo(channelId) {
   try {
     console.log(`📺 Fetching channel ${channelId} from Discord API`);
     const channelData = await makeDiscordRequest(`/channels/${channelId}`);
-    
+
     // Cache the response
     channelCache.set(channelId, {
       data: {
@@ -204,11 +211,10 @@ async function getChannelInfo(channelId) {
 }
 
 // Routes
-
 // Health check
 app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'healthy', 
+  res.json({
+    status: 'healthy',
     timestamp: new Date().toISOString(),
     botTokenConfigured: !!BOT_TOKEN
   });
@@ -244,7 +250,7 @@ app.get('/api/discord/users/:userId', rateLimit, async (req, res) => {
 
     // Fetch from Discord API
     const userData = await makeDiscordRequest(`/users/${userId}`);
-    
+
     // Cache the response
     userCache.set(cacheKey, {
       data: userData,
@@ -272,7 +278,7 @@ app.get('/api/discord/users/:userId', rateLimit, async (req, res) => {
 
   } catch (error) {
     console.error(`❌ Error fetching user ${req.params.userId}:`, error.message);
-    
+
     res.status(error.message.includes('not found') ? 404 : 500).json({
       error: 'Failed to fetch user',
       message: error.message,
@@ -374,7 +380,7 @@ app.post('/api/discord/users/batch', rateLimit, async (req, res) => {
 
         // Fetch from Discord API
         const userData = await makeDiscordRequest(`/users/${userId}`);
-        
+
         // Cache the response
         userCache.set(userId, {
           data: userData,
@@ -388,9 +394,9 @@ app.post('/api/discord/users/batch', rateLimit, async (req, res) => {
         };
 
       } catch (error) {
-        results[userId] = { 
+        results[userId] = {
           error: error.message,
-          userId 
+          userId
         };
       }
     });
@@ -400,7 +406,7 @@ app.post('/api/discord/users/batch', rateLimit, async (req, res) => {
     res.json({
       users: results,
       total: userIds.length,
-      successful: Object.values(results).filter(r => !r.error).length
+      successful: Object.values(results).filter((r) => !r.error).length
     });
 
   } catch (error) {
@@ -437,7 +443,19 @@ app.get('/api/cache/stats', (req, res) => {
   });
 });
 
-// Error handling middleware
+/* ====== ADD THIS SECTION for serving Frontend ====== */
+
+// Serve frontend static files
+app.use(express.static(path.join(__dirname, "../dist")));
+
+// For any other route, serve the React index.html SPA entry point
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "../dist/index.html"));
+});
+
+/* ====== END frontend serving section ====== */
+
+// Error handling middleware (should go after API and static/frontend serving)
 app.use((error, req, res, next) => {
   console.error('🚨 Unhandled error:', error);
   res.status(500).json({
@@ -446,7 +464,7 @@ app.use((error, req, res, next) => {
   });
 });
 
-// 404 handler
+// 404 handler (almost never reached, but fine to leave)
 app.use((req, res) => {
   res.status(404).json({
     error: 'Not found',
@@ -459,7 +477,7 @@ app.listen(PORT, () => {
   console.log(`🚀 Discord API server running on port ${PORT}`);
   console.log(`🔑 Bot token configured: ${!!BOT_TOKEN}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-  
+
   if (!BOT_TOKEN) {
     console.warn('⚠️  Warning: Discord bot token not configured. Set VITE_DISCORD_BOT_TOKEN in .env file');
   }
