@@ -14,7 +14,12 @@ export const useDiscordUser = (userId: string): UseDiscordUserResult => {
   const [error, setError] = useState<string | null>(null);
 
   const fetchUser = useCallback(async () => {
-    if (!userId) return;
+    if (!userId) {
+      setUser(null);
+      setLoading(false);
+      setError(null);
+      return;
+    }
 
     setLoading(true);
     setError(null);
@@ -22,14 +27,19 @@ export const useDiscordUser = (userId: string): UseDiscordUserResult => {
     try {
       const userData = await discordBotService.fetchUser(userId);
       setUser(userData);
+      
+      if (!userData) {
+        setError('User not found');
+      }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch user';
       setError(errorMessage);
       console.error('Error fetching Discord user:', err);
+      setUser(null);
     } finally {
       setLoading(false);
     }
-  }, [userId]); // Only depend on userId
+  }, [userId]);
 
   useEffect(() => {
     fetchUser();
@@ -42,38 +52,63 @@ export const useDiscordUser = (userId: string): UseDiscordUserResult => {
   return { user, loading, error, refetch };
 };
 
-// Hook for multiple users
+// Hook for multiple users with batch fetching
 export const useDiscordUsers = (userIds: string[]) => {
-  const [users, setUsers] = useState<Record<string, DiscordApiUser>>({});
+  const [users, setUsers] = useState<Record<string, DiscordApiUser | null>>({});
   const [loading, setLoading] = useState<Record<string, boolean>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const fetchUser = useCallback(async (userId: string) => {
-    if (!userId || users[userId]) return;
+  const fetchUsers = useCallback(async () => {
+    if (userIds.length === 0) return;
 
-    setLoading(prev => ({ ...prev, [userId]: true }));
-    setErrors(prev => ({ ...prev, [userId]: '' }));
+    // Set loading state for all users
+    const loadingState: Record<string, boolean> = {};
+    userIds.forEach(id => {
+      loadingState[id] = true;
+    });
+    setLoading(loadingState);
 
     try {
-      const userData = await discordBotService.fetchUser(userId);
-      if (userData) {
-        setUsers(prev => ({ ...prev, [userId]: userData }));
-      }
+      const results = await discordBotService.fetchUsers(userIds);
+      
+      setUsers(prev => ({ ...prev, ...results }));
+      
+      // Update loading and error states
+      const newLoading: Record<string, boolean> = {};
+      const newErrors: Record<string, string> = {};
+      
+      userIds.forEach(id => {
+        newLoading[id] = false;
+        if (!results[id]) {
+          newErrors[id] = 'User not found';
+        } else {
+          newErrors[id] = '';
+        }
+      });
+      
+      setLoading(newLoading);
+      setErrors(newErrors);
+
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch user';
-      setErrors(prev => ({ ...prev, [userId]: errorMessage }));
-    } finally {
-      setLoading(prev => ({ ...prev, [userId]: false }));
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch users';
+      
+      // Set error for all users
+      const newLoading: Record<string, boolean> = {};
+      const newErrors: Record<string, string> = {};
+      
+      userIds.forEach(id => {
+        newLoading[id] = false;
+        newErrors[id] = errorMessage;
+      });
+      
+      setLoading(newLoading);
+      setErrors(newErrors);
     }
-  }, [users]);
+  }, [userIds]);
 
   useEffect(() => {
-    userIds.forEach(userId => {
-      if (userId && !users[userId] && !loading[userId]) {
-        fetchUser(userId);
-      }
-    });
-  }, [userIds, users, loading, fetchUser]);
+    fetchUsers();
+  }, [fetchUsers]);
 
-  return { users, loading, errors };
+  return { users, loading, errors, refetch: fetchUsers };
 };

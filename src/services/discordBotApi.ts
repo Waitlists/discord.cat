@@ -1,8 +1,9 @@
-// Discord Bot API service - Browser-compatible version
-// Note: Direct Discord API calls from browser are blocked by CORS
-// This service provides fallback functionality with realistic user data
+// Discord Bot API service - Backend proxy version
+// This service communicates with our backend server instead of Discord directly
 
-const DISCORD_CDN = 'https://cdn.discordapp.com';
+const API_BASE_URL = import.meta.env.DEV 
+  ? 'http://localhost:3001/api' 
+  : '/api'; // In production, backend should be on same domain
 
 export interface DiscordApiUser {
   id: string;
@@ -10,6 +11,7 @@ export interface DiscordApiUser {
   discriminator: string;
   global_name?: string | null;
   avatar?: string | null;
+  avatar_url: string;
   banner?: string | null;
   accent_color?: number | null;
   public_flags?: number;
@@ -28,79 +30,178 @@ export interface DiscordApiUser {
     tag: string;
     badge: string;
   };
+  cached?: boolean;
 }
 
 class DiscordBotService {
-  private cache = new Map<string, DiscordApiUser>();
+  private cache = new Map<string, { user: DiscordApiUser; timestamp: number }>();
+  private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+  private pendingRequests = new Map<string, Promise<DiscordApiUser | null>>();
 
   constructor() {
-    console.log('🔧 Discord service initialized (browser-compatible mode)');
-    console.log('ℹ️ Note: Direct Discord API calls are blocked by CORS in browsers');
-    console.log('ℹ️ Using fallback user data generation');
+    console.log('🔧 Discord service initialized (backend proxy mode)');
+    console.log(`🌐 API Base URL: ${API_BASE_URL}`);
   }
 
-  async fetchUser(userId: string): Promise<DiscordApiUser | null> {
+  async fetchUser(userId: string, size: number = 128): Promise<DiscordApiUser | null> {
     console.log(`👤 Fetching user data for ID: ${userId}`);
     
     // Check cache first
-    if (this.cache.has(userId)) {
+    const cached = this.getCachedUser(userId);
+    if (cached) {
       console.log('💾 Using cached user data');
-      return this.cache.get(userId)!;
+      return cached;
     }
 
-    // Note: Discord API calls from browser are blocked by CORS
-    // In a real application, you would need a backend proxy server
-    console.log('🔄 Generating fallback user data (CORS limitation)');
-    const fallbackUser = this.generateFallbackUser(userId);
-    
-    // Cache the result
-    this.cache.set(userId, fallbackUser);
-    return fallbackUser;
+    // Check if request is already pending
+    if (this.pendingRequests.has(userId)) {
+      console.log('⏳ Request already pending, waiting...');
+      return this.pendingRequests.get(userId)!;
+    }
+
+    // Create new request
+    const requestPromise = this.makeUserRequest(userId, size);
+    this.pendingRequests.set(userId, requestPromise);
+
+    try {
+      const result = await requestPromise;
+      return result;
+    } finally {
+      this.pendingRequests.delete(userId);
+    }
   }
 
-  private generateFallbackUser(userId: string): DiscordApiUser {
-    // Generate consistent fallback data based on user ID
-    const userIdNum = parseInt(userId.slice(-8), 16) || 1;
-    
-    const adjectives = ['Cool', 'Epic', 'Swift', 'Bright', 'Bold', 'Quick', 'Smart', 'Wild', 'Brave', 'Calm'];
-    const nouns = ['Gamer', 'Coder', 'Artist', 'Ninja', 'Wizard', 'Hunter', 'Knight', 'Sage', 'Mage', 'Hero'];
-    
-    const adjective = adjectives[userIdNum % adjectives.length];
-    const noun = nouns[(userIdNum >> 3) % nouns.length];
-    const number = (userIdNum % 9999).toString().padStart(4, '0');
-    
-    const user: DiscordApiUser = {
-      id: userId,
-      username: `${adjective}${noun}${number}`,
-      discriminator: '0',
-      global_name: `${adjective} ${noun}`,
-      avatar: null, // Will use default avatar
-    };
+  private async makeUserRequest(userId: string, size: number): Promise<DiscordApiUser | null> {
+    try {
+      console.log(`🌐 Making backend request for user: ${userId}`);
+      
+      const response = await fetch(`${API_BASE_URL}/discord/users/${userId}?size=${size}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
 
-    console.log('✅ Generated fallback user:', {
-      username: user.username,
-      global_name: user.global_name,
-      avatar: user.avatar
-    });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error(`❌ Backend request failed:`, {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorData
+        });
+        
+        if (response.status === 404) {
+          console.log('👻 User not found');
+          return null;
+        }
+        
+        throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+      }
 
-    return user;
+      const userData: DiscordApiUser = await response.json();
+      console.log(`✅ Successfully fetched user:`, {
+        id: userData.id,
+        username: userData.username,
+        global_name: userData.global_name,
+        hasAvatar: !!userData.avatar,
+        cached: userData.cached
+      });
+
+      // Cache the result
+      this.cache.set(userId, {
+        user: userData,
+        timestamp: Date.now()
+      });
+
+      return userData;
+
+    } catch (error) {
+      console.error(`❌ Failed to fetch user ${userId}:`, error);
+      return null;
+    }
   }
 
-  getAvatarUrl(userId: string, avatarHash: string | null | undefined, size: number = 128): string {
-    if (avatarHash) {
-      // Determine if it's a GIF or static image
-      const extension = avatarHash.startsWith('a_') ? 'gif' : 'png';
-      const url = `${DISCORD_CDN}/avatars/${userId}/${avatarHash}.${extension}?size=${size}`;
-      console.log(`🖼️ Generated avatar URL: ${url}`);
-      return url;
+  async fetchUsers(userIds: string[], size: number = 128): Promise<Record<string, DiscordApiUser | null>> {
+    console.log(`👥 Batch fetching ${userIds.length} users`);
+    
+    const results: Record<string, DiscordApiUser | null> = {};
+    const uncachedIds: string[] = [];
+
+    // Check cache for each user
+    for (const userId of userIds) {
+      const cached = this.getCachedUser(userId);
+      if (cached) {
+        results[userId] = cached;
+      } else {
+        uncachedIds.push(userId);
+      }
+    }
+
+    if (uncachedIds.length === 0) {
+      console.log('💾 All users found in cache');
+      return results;
+    }
+
+    try {
+      console.log(`🌐 Making batch request for ${uncachedIds.length} uncached users`);
+      
+      const response = await fetch(`${API_BASE_URL}/discord/users/batch`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userIds: uncachedIds,
+          size
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('❌ Batch request failed:', errorData);
+        throw new Error(errorData.message || `HTTP ${response.status}`);
+      }
+
+      const batchData = await response.json();
+      console.log(`✅ Batch request successful: ${batchData.successful}/${batchData.total} users`);
+
+      // Process batch results
+      for (const [userId, userData] of Object.entries(batchData.users)) {
+        if (userData && !userData.error) {
+          // Cache successful results
+          this.cache.set(userId, {
+            user: userData as DiscordApiUser,
+            timestamp: Date.now()
+          });
+          results[userId] = userData as DiscordApiUser;
+        } else {
+          console.warn(`⚠️ Failed to fetch user ${userId}:`, userData.error);
+          results[userId] = null;
+        }
+      }
+
+    } catch (error) {
+      console.error('❌ Batch request error:', error);
+      // Return null for all uncached users on error
+      for (const userId of uncachedIds) {
+        results[userId] = null;
+      }
+    }
+
+    return results;
+  }
+
+  private getCachedUser(userId: string): DiscordApiUser | null {
+    const cached = this.cache.get(userId);
+    if (cached && Date.now() - cached.timestamp < this.CACHE_TTL) {
+      return cached.user;
     }
     
-    // Generate default avatar based on Discord's algorithm
-    // For new usernames (discriminator 0), use user ID
-    const defaultAvatarIndex = (parseInt(userId) >> 22) % 6;
-    const url = `${DISCORD_CDN}/embed/avatars/${defaultAvatarIndex}.png`;
-    console.log(`🖼️ Generated default avatar URL: ${url}`);
-    return url;
+    if (cached) {
+      this.cache.delete(userId); // Remove expired cache
+    }
+    
+    return null;
   }
 
   getDisplayName(user: DiscordApiUser): string {
@@ -110,9 +211,16 @@ class DiscordBotService {
   }
 
   getFullUsername(user: DiscordApiUser): string {
-    const fullUsername = user.discriminator === '0' ? `@${user.username}` : `${user.username}#${user.discriminator}`;
+    const fullUsername = user.discriminator === '0' 
+      ? `@${user.username}` 
+      : `${user.username}#${user.discriminator}`;
     console.log(`📝 Full username for ${user.id}: ${fullUsername}`);
     return fullUsername;
+  }
+
+  getAvatarUrl(user: DiscordApiUser, size?: number): string {
+    // Use the avatar_url provided by the backend, or fallback to user.avatar_url
+    return user.avatar_url;
   }
 
   // Clear cache (useful for testing or memory management)
@@ -127,6 +235,19 @@ class DiscordBotService {
       size: this.cache.size,
       users: Array.from(this.cache.keys()),
     };
+  }
+
+  // Check backend health
+  async checkHealth(): Promise<boolean> {
+    try {
+      const response = await fetch(`${API_BASE_URL.replace('/api', '')}/health`);
+      const health = await response.json();
+      console.log('🏥 Backend health:', health);
+      return response.ok && health.status === 'healthy';
+    } catch (error) {
+      console.error('❌ Backend health check failed:', error);
+      return false;
+    }
   }
 }
 

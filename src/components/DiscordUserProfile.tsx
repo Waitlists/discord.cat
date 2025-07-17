@@ -94,6 +94,7 @@ const DiscordUserProfile: React.FC<DiscordUserProfileProps> = ({
   }
 
   const avatarUrl = discordBotService.getAvatarUrl(user.id, user.avatar, size === 'lg' ? 128 : size === 'md' ? 64 : 32);
+  const avatarUrl = discordBotService.getAvatarUrl(user, size === 'lg' ? 128 : size === 'md' ? 64 : 32);
   const displayName = discordBotService.getDisplayName(user);
   const fullUsername = discordBotService.getFullUsername(user);
   
@@ -118,9 +119,8 @@ const DiscordUserProfile: React.FC<DiscordUserProfileProps> = ({
           onLoad={() => console.log(`✅ Avatar loaded successfully for ${user.id}`)}
           onError={(e) => {
             console.log(`❌ Avatar failed to load for ${user.id}, using fallback`);
-            // Fallback to default avatar on error
-            const target = e.target as HTMLImageElement;
-            target.src = discordBotService.getAvatarUrl(user.id, null);
+            // Avatar URL from backend should already be correct, but log the error
+            console.error('Avatar load error for user:', user.id);
           }}
         />
       </div>
