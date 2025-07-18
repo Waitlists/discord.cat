@@ -6,6 +6,14 @@ export class ElasticsearchService {
   private readonly INDEX_NAMES = ['chunk1', 'chunk2'];
 
   constructor() {
+    console.log('🔧 Initializing Elasticsearch service...');
+    console.log('🔧 Environment variables check:');
+    console.log('   ELASTICSEARCH_CLOUD_ID:', !!process.env.ELASTICSEARCH_CLOUD_ID);
+    console.log('   ELASTICSEARCH_USERNAME:', !!process.env.ELASTICSEARCH_USERNAME);
+    console.log('   ELASTICSEARCH_PASSWORD:', !!process.env.ELASTICSEARCH_PASSWORD);
+    console.log('   ELASTICSEARCH_API_KEY:', !!process.env.ELASTICSEARCH_API_KEY);
+    console.log('   ELASTICSEARCH_URL:', !!process.env.ELASTICSEARCH_URL);
+
     // Initialize Elasticsearch client
     if (process.env.ELASTICSEARCH_CLOUD_ID) {
       // Use Elastic Cloud
@@ -17,7 +25,18 @@ export class ElasticsearchService {
       console.log('🔧 Username provided:', !!process.env.ELASTICSEARCH_USERNAME);
       console.log('🔧 Password provided:', !!process.env.ELASTICSEARCH_PASSWORD);
       
-      if (hasCredentials) {
+      if (hasApiKey) {
+        // Use API key authentication (preferred)
+        this.client = new Client({
+          cloud: {
+            id: process.env.ELASTICSEARCH_CLOUD_ID
+          },
+          auth: {
+            apiKey: process.env.ELASTICSEARCH_API_KEY
+          }
+        });
+        console.log('🔧 Elasticsearch configured with API key');
+      } else if (hasCredentials) {
         // Use username/password authentication (preferred)
         this.client = new Client({
           cloud: {
@@ -29,19 +48,9 @@ export class ElasticsearchService {
           }
         });
         console.log('🔧 Elasticsearch configured with username/password');
-      } else if (hasApiKey) {
-        // Use API key authentication
-        this.client = new Client({
-          cloud: {
-            id: process.env.ELASTICSEARCH_CLOUD_ID
-          },
-          auth: {
-            apiKey: process.env.ELASTICSEARCH_API_KEY
-          }
-        });
-        console.log('🔧 Elasticsearch configured with API key');
       } else {
-        throw new Error('Elasticsearch Cloud ID provided but missing API key or username/password');
+        console.error('❌ Elasticsearch Cloud ID provided but missing authentication credentials');
+        throw new Error('Missing Elasticsearch authentication: Please set either ELASTICSEARCH_API_KEY or both ELASTICSEARCH_USERNAME and ELASTICSEARCH_PASSWORD');
       }
     } else if (process.env.ELASTICSEARCH_URL) {
       // Use custom URL with auth
@@ -54,11 +63,12 @@ export class ElasticsearchService {
       });
       console.log('🔧 Elasticsearch configured for custom URL');
     } else {
-      // Default local setup
-      this.client = new Client({
-        node: 'http://localhost:9200'
-      });
-      console.log('🔧 Elasticsearch configured for localhost');
+      console.error('❌ No Elasticsearch configuration found');
+      console.error('Please set one of the following:');
+      console.error('  - ELASTICSEARCH_CLOUD_ID + ELASTICSEARCH_USERNAME + ELASTICSEARCH_PASSWORD');
+      console.error('  - ELASTICSEARCH_CLOUD_ID + ELASTICSEARCH_API_KEY');
+      console.error('  - ELASTICSEARCH_URL + credentials');
+      throw new Error('Missing Elasticsearch configuration: No connection details provided');
     }
   }
 
