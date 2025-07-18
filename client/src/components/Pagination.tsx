@@ -1,11 +1,11 @@
-import React from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import React from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface PaginationProps {
   currentPage: number;
   totalPages: number;
   onPageChange: (page: number) => void;
-  totalResults: number;
+  totalResults?: number; // <--- make this optional!
   resultsPerPage: number;
 }
 
@@ -13,7 +13,7 @@ const Pagination: React.FC<PaginationProps> = ({
   currentPage,
   totalPages,
   onPageChange,
-  totalResults,
+  totalResults = 0, // <--- default to 0 if undefined!
   resultsPerPage,
 }) => {
   const startResult = (currentPage - 1) * resultsPerPage + 1;
@@ -22,7 +22,7 @@ const Pagination: React.FC<PaginationProps> = ({
   const getPageNumbers = () => {
     const pages = [];
     const maxVisible = 5;
-    
+
     if (totalPages <= maxVisible) {
       for (let i = 1; i <= totalPages; i++) {
         pages.push(i);
@@ -32,25 +32,25 @@ const Pagination: React.FC<PaginationProps> = ({
         for (let i = 1; i <= 4; i++) {
           pages.push(i);
         }
-        pages.push('...');
+        pages.push("...");
         pages.push(totalPages);
       } else if (currentPage >= totalPages - 2) {
         pages.push(1);
-        pages.push('...');
+        pages.push("...");
         for (let i = totalPages - 3; i <= totalPages; i++) {
           pages.push(i);
         }
       } else {
         pages.push(1);
-        pages.push('...');
+        pages.push("...");
         for (let i = currentPage - 1; i <= currentPage + 1; i++) {
           pages.push(i);
         }
-        pages.push('...');
+        pages.push("...");
         pages.push(totalPages);
       }
     }
-    
+
     return pages;
   };
 
@@ -59,9 +59,10 @@ const Pagination: React.FC<PaginationProps> = ({
   return (
     <div className="flex flex-col items-center gap-4 py-8">
       <div className="text-sm text-gray-600 dark:text-gray-400">
-        Showing {startResult}-{endResult} of {totalResults.toLocaleString()} messages
+        Showing {startResult}-{endResult} of {totalResults.toLocaleString()}{" "}
+        messages
       </div>
-      
+
       <div className="flex items-center gap-2">
         <button
           onClick={() => onPageChange(currentPage - 1)}
@@ -70,19 +71,19 @@ const Pagination: React.FC<PaginationProps> = ({
         >
           <ChevronLeft className="w-5 h-5" />
         </button>
-        
+
         <div className="flex items-center gap-1">
           {getPageNumbers().map((page, index) => (
             <React.Fragment key={index}>
-              {page === '...' ? (
+              {page === "..." ? (
                 <span className="px-3 py-2 text-gray-500">...</span>
               ) : (
                 <button
                   onClick={() => onPageChange(page as number)}
                   className={`px-3 py-2 text-sm font-medium transition-colors duration-200 ${
                     currentPage === page
-                      ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20'
-                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                      ? "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20"
+                      : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
                   }`}
                 >
                   {page}
@@ -91,7 +92,7 @@ const Pagination: React.FC<PaginationProps> = ({
             </React.Fragment>
           ))}
         </div>
-        
+
         <button
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage === totalPages}

@@ -1,10 +1,10 @@
-import { Clock, Copy, Hash, Server, User } from 'lucide-react';
-import { DiscordMessage } from '@shared/schema';
-import DiscordUserProfile from './DiscordUserProfile';
-import Pagination from './Pagination';
+import { Clock, Copy, Hash, Server, User } from "lucide-react";
+import { DiscordMessage } from "@shared/schema";
+import DiscordUserProfile from "./DiscordUserProfile";
+import Pagination from "./Pagination";
 
 interface MessageDisplayProps {
-  messages: DiscordMessage[];
+  messages?: DiscordMessage[]; // allow undefined for safety
   currentPage: number;
   totalPages: number;
   totalResults: number;
@@ -15,7 +15,7 @@ interface MessageDisplayProps {
 }
 
 const MessageDisplay: React.FC<MessageDisplayProps> = ({
-  messages,
+  messages = [], // default to an empty array!
   currentPage,
   totalPages,
   totalResults,
@@ -26,12 +26,12 @@ const MessageDisplay: React.FC<MessageDisplayProps> = ({
 }) => {
   const formatTimestamp = (timestamp: string) => {
     const date = new Date(timestamp);
-    return date.toLocaleString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
+    return date.toLocaleString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
@@ -70,13 +70,13 @@ const MessageDisplay: React.FC<MessageDisplayProps> = ({
             className="group border-b border-gray-200 dark:border-gray-700 pb-6 last:border-b-0"
             style={{
               animationDelay: `${index * 50}ms`,
-              animation: 'fadeInUp 0.6s ease-out forwards',
+              animation: "fadeInUp 0.6s ease-out forwards",
             }}
           >
             {/* Header */}
             <div className="flex items-start justify-between mb-4">
               <div className="flex items-center gap-4">
-                <DiscordUserProfile 
+                <DiscordUserProfile
                   userId={message.author_id}
                   size="md"
                   showUsername={true}
@@ -84,13 +84,13 @@ const MessageDisplay: React.FC<MessageDisplayProps> = ({
                   onClick={() => onAuthorClick(message.author_id)}
                 />
               </div>
-              
+
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
                   <Clock className="w-3 h-3" />
                   {formatTimestamp(message.timestamp)}
                 </div>
-                
+
                 <button
                   onClick={() => copyToClipboard(message.content)}
                   className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-200 opacity-0 group-hover:opacity-100"
@@ -133,7 +133,7 @@ const MessageDisplay: React.FC<MessageDisplayProps> = ({
           </div>
         ))}
       </div>
-      
+
       <Pagination
         currentPage={currentPage}
         totalPages={totalPages}
