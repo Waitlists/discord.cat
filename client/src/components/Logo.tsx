@@ -1,4 +1,3 @@
-import React from 'react';
 import { Cat } from 'lucide-react';
 
 const Logo: React.FC = () => {

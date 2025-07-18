@@ -1,4 +1,4 @@
-import React from 'react';
+import { useState } from 'react';
 import { ExternalLink, Copy, Check } from 'lucide-react';
 import { useDiscordUser } from '../hooks/useDiscordUser';
 import { discordBotService } from '../services/discordBotApi';
@@ -10,7 +10,7 @@ interface DiscordUserCardProps {
 
 const DiscordUserCard: React.FC<DiscordUserCardProps> = ({ userId, onClose }) => {
   const { user, loading, error } = useDiscordUser(userId);
-  const [copied, setCopied] = React.useState(false);
+  const [copied, setCopied] = useState(false);
 
   const copyUserId = () => {
     navigator.clipboard.writeText(userId);

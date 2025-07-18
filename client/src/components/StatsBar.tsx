@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { MessageStats } from '../types';
+import { useState, useEffect } from 'react';
+import { MessageStats } from '@shared/schema';
 
 interface StatsBarProps {
   stats: MessageStats;

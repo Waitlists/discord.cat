@@ -1,4 +1,3 @@
-import React from 'react';
 import { User, AlertCircle, Loader2 } from 'lucide-react';
 import { useDiscordUser } from '../hooks/useDiscordUser';
 import { discordBotService } from '../services/discordBotApi';

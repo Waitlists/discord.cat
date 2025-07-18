@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { DiscordMessage, MessageStats, SearchFilters } from './types';
+import { useState, useMemo } from 'react';
+import { DiscordMessage, MessageStats, SearchFilters } from '@shared/schema';
 import Logo from './components/Logo';
 import ThemeToggle from './components/ThemeToggle';
 import StatsBar from './components/StatsBar';
@@ -242,19 +242,7 @@ function App() {
         </div>
       )}
 
-      {/* Custom Styles */}
-      <style jsx>{`
-        @keyframes fadeInUp {
-          from {
-            opacity: 0;
-            transform: translateY(30px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-      `}</style>
+
     </div>
   );
 }

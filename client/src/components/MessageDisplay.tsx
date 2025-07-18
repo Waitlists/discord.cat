@@ -1,6 +1,5 @@
-import React from 'react';
 import { Clock, Copy, Hash, Server, User } from 'lucide-react';
-import { DiscordMessage } from '../types';
+import { DiscordMessage } from '@shared/schema';
 import DiscordUserProfile from './DiscordUserProfile';
 import Pagination from './Pagination';
 

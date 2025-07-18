@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { User } from 'lucide-react';
-import { DiscordUser } from '../types';
+import { DiscordUser } from '@shared/schema';
 import { useDiscordData } from '../hooks/useDiscordData';
 import { getAvatarUrl } from '../services/discordApi';
 

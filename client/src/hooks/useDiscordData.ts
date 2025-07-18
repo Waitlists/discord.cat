@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { DiscordUser, DiscordGuild, DiscordChannel, UserCache, GuildCache, ChannelCache } from '../types';
+import { DiscordUser, DiscordGuild, DiscordChannel, UserCache, GuildCache, ChannelCache } from '@shared/schema';
 import { fetchDiscordUser, fetchDiscordGuild, fetchDiscordChannel, rateLimiter } from '../services/discordApi';
 
 export const useDiscordData = () => {
