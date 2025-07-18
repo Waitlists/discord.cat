@@ -3,7 +3,7 @@ import { DiscordMessage } from '@shared/schema';
 
 export class ElasticsearchService {
   private client: Client;
-  private readonly INDEX_NAME = 'discord-messages';
+  private readonly INDEX_NAMES = ['chunk1', 'chunk2'];
 
   constructor() {
     // Initialize Elasticsearch client
@@ -17,19 +17,8 @@ export class ElasticsearchService {
       console.log('🔧 Username provided:', !!process.env.ELASTICSEARCH_USERNAME);
       console.log('🔧 Password provided:', !!process.env.ELASTICSEARCH_PASSWORD);
       
-      if (hasApiKey) {
-        // Use API key authentication
-        this.client = new Client({
-          cloud: {
-            id: process.env.ELASTICSEARCH_CLOUD_ID
-          },
-          auth: {
-            apiKey: process.env.ELASTICSEARCH_API_KEY
-          }
-        });
-        console.log('🔧 Elasticsearch configured with API key');
-      } else if (hasCredentials) {
-        // Use username/password authentication
+      if (hasCredentials) {
+        // Use username/password authentication (preferred)
         this.client = new Client({
           cloud: {
             id: process.env.ELASTICSEARCH_CLOUD_ID
@@ -40,6 +29,17 @@ export class ElasticsearchService {
           }
         });
         console.log('🔧 Elasticsearch configured with username/password');
+      } else if (hasApiKey) {
+        // Use API key authentication
+        this.client = new Client({
+          cloud: {
+            id: process.env.ELASTICSEARCH_CLOUD_ID
+          },
+          auth: {
+            apiKey: process.env.ELASTICSEARCH_API_KEY
+          }
+        });
+        console.log('🔧 Elasticsearch configured with API key');
       } else {
         throw new Error('Elasticsearch Cloud ID provided but missing API key or username/password');
       }
@@ -237,7 +237,7 @@ export class ElasticsearchService {
       };
 
       const response = await this.client.search({
-        index: this.INDEX_NAME,
+        index: this.INDEX_NAMES,
         body: searchBody
       });
 
@@ -266,7 +266,7 @@ export class ElasticsearchService {
   }> {
     try {
       const response = await this.client.search({
-        index: this.INDEX_NAME,
+        index: this.INDEX_NAMES,
         body: {
           size: 0,
           aggs: {

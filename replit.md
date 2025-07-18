@@ -8,7 +8,7 @@ A React-based Discord message viewer application that allows users to search and
 - **Backend**: Express.js server with TypeScript
 - **Database**: Elasticsearch Cloud as primary data source
 - **Styling**: Tailwind CSS with shadcn/ui components
-- **Data**: 46 Discord messages indexed in Elasticsearch
+- **Data**: 2.2M Discord messages indexed in Elasticsearch (chunk1, chunk2)
 - **Theme**: Dark/light mode support
 - **Search**: Elasticsearch-powered with fuzzy matching and aggregations
 
@@ -24,7 +24,7 @@ A React-based Discord message viewer application that allows users to search and
 - Added proper dark mode support with CSS variables
 - **2025-01-18: FULLY MIGRATED TO ELASTICSEARCH**
 - Elasticsearch Cloud connection successfully established
-- Complete data import: 46 messages from JSON files imported to Elasticsearch
+- Connected to existing Elasticsearch indices: chunk1 and chunk2 with 2.2M messages
 - Replaced entire frontend to use Elasticsearch as primary data source
 - Implemented lightning-fast search with 40ms response times
 - Statistics now powered by Elasticsearch aggregations
@@ -48,11 +48,12 @@ A React-based Discord message viewer application that allows users to search and
 - Theme: Dark/light mode toggle available
 
 ## Data Structure
-- All message data is stored in Elasticsearch Cloud (46 messages)
+- All message data is stored in Elasticsearch Cloud (2.2M messages across indices: chunk1, chunk2)
 - Types defined in client/src/types/index.ts and shared/schema.ts
 - Data processing handled entirely by Elasticsearch with lightning-fast queries
 - Statistics calculated using Elasticsearch aggregations in real-time
 - No local JSON files - pure Elasticsearch integration
+- **Scale**: 2,206,793 messages, 425,262 unique users, 12 servers
 
 ## Development Setup
 - Run `npm run dev` to start development server
