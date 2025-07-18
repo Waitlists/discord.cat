@@ -56,7 +56,10 @@ export class ElasticsearchService {
                 author_id: { type: 'keyword' },
                 channel_id: { type: 'keyword' },
                 guild_id: { type: 'keyword' },
-                timestamp: { type: 'date' },
+                timestamp: { 
+                  type: 'date',
+                  format: 'yyyy-MM-dd HH:mm:ss.SSSSSSXXX||yyyy-MM-dd HH:mm:ss.SSSXXX||strict_date_optional_time||epoch_millis'
+                },
                 // Additional fields for search optimization
                 content_length: { type: 'integer' },
                 has_content: { type: 'boolean' },
@@ -98,10 +101,9 @@ export class ElasticsearchService {
         id: message.message_id,
         body: {
           ...message,
+          // Keep original timestamp format - it's already ISO 8601
           content_length: message.content.length,
-          has_content: message.content.length > 0,
-          // Add timestamp as proper date
-          timestamp: new Date(message.timestamp).toISOString()
+          has_content: message.content.length > 0
         }
       });
     } catch (error) {
@@ -116,9 +118,9 @@ export class ElasticsearchService {
         { index: { _index: this.INDEX_NAME, _id: message.message_id } },
         {
           ...message,
+          // Keep original timestamp format - it's already ISO 8601
           content_length: message.content.length,
-          has_content: message.content.length > 0,
-          timestamp: new Date(message.timestamp).toISOString()
+          has_content: message.content.length > 0
         }
       ]);
 
