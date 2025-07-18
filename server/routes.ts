@@ -86,32 +86,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/search/messages", async (req, res) => {
     try {
       const {
-        q: content,
-        author_id,
-        channel_id,
-        guild_id,
+        content,
+        authorId,
+        channelId,
+        guildId,
         page = 1,
-        size = 50,
-        sort = 'timestamp'
+        limit = 50
       } = req.query;
 
-      const from = (parseInt(page as string) - 1) * parseInt(size as string);
+      const pageNum = parseInt(page as string);
+      const limitNum = parseInt(limit as string);
+      const from = (pageNum - 1) * limitNum;
       
       const results = await elasticsearchService.searchMessages({
         content: content as string,
-        author_id: author_id as string,
-        channel_id: channel_id as string,
-        guild_id: guild_id as string,
+        author_id: authorId as string,
+        channel_id: channelId as string,
+        guild_id: guildId as string,
         from,
-        size: parseInt(size as string),
-        sort: sort as 'timestamp' | 'relevance'
+        size: limitNum,
+        sort: 'timestamp'
       });
 
       res.json({
         messages: results.messages,
         total: results.total,
-        page: parseInt(page as string),
-        size: parseInt(size as string),
+        page: pageNum,
+        limit: limitNum,
         took: results.took
       });
     } catch (error) {
@@ -124,7 +125,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/search/stats", async (req, res) => {
     try {
       const stats = await elasticsearchService.getMessageStats();
-      res.json(stats);
+      res.json({
+        totalMessages: stats.total_messages,
+        uniqueServers: stats.unique_guilds,
+        uniqueUsers: stats.unique_authors
+      });
     } catch (error) {
       console.error('Stats error:', error);
       res.status(500).json({ error: 'Failed to get stats' });

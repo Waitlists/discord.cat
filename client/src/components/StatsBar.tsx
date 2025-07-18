@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { MessageStats } from '@shared/schema';
 
 interface StatsBarProps {
-  stats: MessageStats;
+  stats: MessageStats | null;
   isFixed?: boolean; // Always show total stats, not filtered
 }
 
@@ -16,7 +16,7 @@ const StatsBar: React.FC<StatsBarProps> = ({ stats, isFixed = false }) => {
 
   useEffect(() => {
     // Only animate once when component first mounts
-    if (hasAnimated && isFixed) return;
+    if (!stats || (hasAnimated && isFixed)) return;
     
     const duration = 5000; // 5 seconds
     const fps = 60; // 60 FPS for smooth animation
@@ -45,6 +45,21 @@ const StatsBar: React.FC<StatsBarProps> = ({ stats, isFixed = false }) => {
 
     return () => clearInterval(timer);
   }, [stats, hasAnimated, isFixed]);
+
+  if (!stats) {
+    return (
+      <div className="flex items-center justify-center gap-16 py-8 text-center">
+        <div>
+          <div className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
+            Loading...
+          </div>
+          <div className="text-sm font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">
+            Total Messages
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex items-center justify-center gap-16 py-8 text-center">

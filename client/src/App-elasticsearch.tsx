@@ -39,24 +39,13 @@ function App() {
 
   const performSearch = async () => {
     setHasSearched(true);
-    if (currentPage === 1) {
-      // Only reset to page 1 if we're not already on page 1
-      const searchResults = await search(filters, 1, MESSAGES_PER_PAGE);
-      if (searchResults) {
-        console.log(`✅ Found ${searchResults.total} messages in ${searchResults.took}ms`);
-      }
-    } else {
-      // Continue with current page
-      const searchResults = await search(filters, currentPage, MESSAGES_PER_PAGE);
-      if (searchResults) {
-        console.log(`✅ Found ${searchResults.total} messages in ${searchResults.took}ms`);
-      }
+    setCurrentPage(1); // Reset to first page on new search
+    
+    const searchResults = await search(filters, currentPage, MESSAGES_PER_PAGE);
+    
+    if (searchResults) {
+      console.log(`✅ Found ${searchResults.total} messages in ${searchResults.took}ms`);
     }
-  };
-
-  const handleSearch = () => {
-    setCurrentPage(1);
-    performSearch();
   };
 
   const handlePageChange = (page: number) => {
@@ -71,15 +60,13 @@ function App() {
   const handleChannelClick = (channelId: string) => {
     setFilters(prev => ({ ...prev, channelId }));
     setCurrentPage(1);
-    setHasSearched(true);
-    search({ ...filters, channelId }, 1, MESSAGES_PER_PAGE);
+    performSearch();
   };
 
   const handleGuildClick = (guildId: string) => {
     setFilters(prev => ({ ...prev, guildId }));
     setCurrentPage(1);
-    setHasSearched(true);
-    search({ ...filters, guildId }, 1, MESSAGES_PER_PAGE);
+    performSearch();
   };
 
   const handleClearSearch = () => {
@@ -135,8 +122,10 @@ function App() {
           <SearchInterface
             filters={filters}
             onFiltersChange={setFilters}
-            onSearch={handleSearch}
+            onSearch={performSearch}
+            onClear={handleClearSearch}
             isLoading={loading}
+            hasResults={hasSearched && results !== null}
           />
         </div>
 
@@ -149,7 +138,7 @@ function App() {
               </h3>
               <p className="text-red-600 dark:text-red-400">{error}</p>
               <button
-                onClick={handleSearch}
+                onClick={performSearch}
                 className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
               >
                 Try Again
