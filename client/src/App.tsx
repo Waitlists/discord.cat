@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { DiscordMessage, MessageStats, SearchFilters } from '@shared/schema';
 import Logo from './components/Logo';
 import ThemeToggle from './components/ThemeToggle';
@@ -6,6 +6,7 @@ import StatsBar from './components/StatsBar';
 import SearchInterface from './components/SearchInterface';
 import MessageDisplay from './components/MessageDisplay';
 import DiscordUserCard from './components/DiscordUserCard';
+import ElasticsearchStatus from './components/ElasticsearchStatus';
 import { useTheme } from './hooks/useTheme';
 
 // Import all message chunks
@@ -164,7 +165,10 @@ function App() {
       {/* Header */}
       <div className="flex items-center justify-between p-6">
         <Logo />
-        <ThemeToggle />
+        <div className="flex items-center gap-4">
+          <ElasticsearchStatus />
+          <ThemeToggle />
+        </div>
       </div>
 
       {/* Stats Bar */}

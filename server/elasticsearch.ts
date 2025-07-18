@@ -7,23 +7,42 @@ export class ElasticsearchService {
 
   constructor() {
     // Initialize Elasticsearch client
-    // For production, use environment variables for connection details
-    const elasticsearchUrl = process.env.ELASTICSEARCH_URL || 'http://localhost:9200';
-    
-    this.client = new Client({
-      node: elasticsearchUrl,
-      // Add authentication if needed
-      auth: process.env.ELASTICSEARCH_AUTH ? {
-        username: process.env.ELASTICSEARCH_USERNAME || 'elastic',
-        password: process.env.ELASTICSEARCH_PASSWORD || ''
-      } : undefined,
-      // For cloud providers like Elastic Cloud
-      cloud: process.env.ELASTICSEARCH_CLOUD_ID ? {
-        id: process.env.ELASTICSEARCH_CLOUD_ID,
-        username: process.env.ELASTICSEARCH_USERNAME || 'elastic',
-        password: process.env.ELASTICSEARCH_PASSWORD || ''
-      } : undefined
-    });
+    if (process.env.ELASTICSEARCH_CLOUD_ID) {
+      // Use Elastic Cloud
+      const hasCredentials = process.env.ELASTICSEARCH_USERNAME && process.env.ELASTICSEARCH_PASSWORD;
+      console.log('🔧 Elasticsearch Cloud ID detected');
+      console.log('🔧 Username provided:', !!process.env.ELASTICSEARCH_USERNAME);
+      console.log('🔧 Password provided:', !!process.env.ELASTICSEARCH_PASSWORD);
+      
+      if (!hasCredentials) {
+        throw new Error('Elasticsearch Cloud ID provided but missing username or password');
+      }
+      
+      this.client = new Client({
+        cloud: {
+          id: process.env.ELASTICSEARCH_CLOUD_ID,
+          username: process.env.ELASTICSEARCH_USERNAME,
+          password: process.env.ELASTICSEARCH_PASSWORD
+        }
+      });
+      console.log('🔧 Elasticsearch configured for Elastic Cloud');
+    } else if (process.env.ELASTICSEARCH_URL) {
+      // Use custom URL with auth
+      this.client = new Client({
+        node: process.env.ELASTICSEARCH_URL,
+        auth: {
+          username: process.env.ELASTICSEARCH_USERNAME || 'elastic',
+          password: process.env.ELASTICSEARCH_PASSWORD || ''
+        }
+      });
+      console.log('🔧 Elasticsearch configured for custom URL');
+    } else {
+      // Default local setup
+      this.client = new Client({
+        node: 'http://localhost:9200'
+      });
+      console.log('🔧 Elasticsearch configured for localhost');
+    }
   }
 
   async checkConnection(): Promise<boolean> {
