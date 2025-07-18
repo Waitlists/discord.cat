@@ -3,11 +3,59 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // put application routes here
-  // prefix all routes with /api
+  // Discord API routes
+  app.get("/api/discord/users/:userId", async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const { size } = req.query;
+      
+      if (!userId) {
+        return res.status(400).json({ error: "User ID is required" });
+      }
 
-  // use storage to perform CRUD operations on the storage interface
-  // e.g. storage.insertUser(user) or storage.getUserByUsername(username)
+      const discordToken = process.env.DISCORD_TOKEN;
+      if (!discordToken) {
+        return res.status(500).json({ error: "Discord token not configured" });
+      }
+
+      // Fetch user from Discord API
+      const discordResponse = await fetch(`https://discord.com/api/v10/users/${userId}`, {
+        headers: {
+          'Authorization': `Bot ${discordToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!discordResponse.ok) {
+        if (discordResponse.status === 404) {
+          return res.status(404).json({ error: "User not found" });
+        }
+        return res.status(discordResponse.status).json({ error: "Failed to fetch user from Discord" });
+      }
+
+      const userData = await discordResponse.json();
+      
+      // Return user data
+      res.json({
+        id: userData.id,
+        username: userData.username,
+        discriminator: userData.discriminator,
+        avatar: userData.avatar,
+        global_name: userData.global_name,
+        bot: userData.bot,
+        system: userData.system,
+        public_flags: userData.public_flags
+      });
+    } catch (error) {
+      console.error("Discord API error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Health check endpoint
+  app.get("/api/health", (req, res) => {
+    res.json({ status: "ok" });
+  });
 
   const httpServer = createServer(app);
 
