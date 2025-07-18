@@ -49,7 +49,7 @@ async function convertToNDJSON(): Promise<void> {
           ...message,
           content_length: message.content.length,
           has_content: message.content.length > 0,
-          timestamp: new Date(message.timestamp).toISOString(),
+          timestamp: message.timestamp, // Keep original format - it's already ISO 8601
           // Add searchable fields
           author_name: message.author_id, // Will be enriched with actual names later
           channel_name: message.channel_id,
@@ -115,7 +115,7 @@ async function createSimpleNDJSON(): Promise<void> {
           author_id: message.author_id,
           channel_id: message.channel_id,
           guild_id: message.guild_id,
-          timestamp: new Date(message.timestamp).toISOString(),
+          timestamp: message.timestamp, // Keep original format - it's already ISO 8601
           content_length: message.content.length,
           has_content: message.content.length > 0
         };
