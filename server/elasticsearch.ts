@@ -9,23 +9,40 @@ export class ElasticsearchService {
     // Initialize Elasticsearch client
     if (process.env.ELASTICSEARCH_CLOUD_ID) {
       // Use Elastic Cloud
+      const hasApiKey = process.env.ELASTICSEARCH_API_KEY;
       const hasCredentials = process.env.ELASTICSEARCH_USERNAME && process.env.ELASTICSEARCH_PASSWORD;
+      
       console.log('🔧 Elasticsearch Cloud ID detected');
+      console.log('🔧 API Key provided:', !!hasApiKey);
       console.log('🔧 Username provided:', !!process.env.ELASTICSEARCH_USERNAME);
       console.log('🔧 Password provided:', !!process.env.ELASTICSEARCH_PASSWORD);
       
-      if (!hasCredentials) {
-        throw new Error('Elasticsearch Cloud ID provided but missing username or password');
+      if (hasApiKey) {
+        // Use API key authentication
+        this.client = new Client({
+          cloud: {
+            id: process.env.ELASTICSEARCH_CLOUD_ID
+          },
+          auth: {
+            apiKey: process.env.ELASTICSEARCH_API_KEY
+          }
+        });
+        console.log('🔧 Elasticsearch configured with API key');
+      } else if (hasCredentials) {
+        // Use username/password authentication
+        this.client = new Client({
+          cloud: {
+            id: process.env.ELASTICSEARCH_CLOUD_ID
+          },
+          auth: {
+            username: process.env.ELASTICSEARCH_USERNAME,
+            password: process.env.ELASTICSEARCH_PASSWORD
+          }
+        });
+        console.log('🔧 Elasticsearch configured with username/password');
+      } else {
+        throw new Error('Elasticsearch Cloud ID provided but missing API key or username/password');
       }
-      
-      this.client = new Client({
-        cloud: {
-          id: process.env.ELASTICSEARCH_CLOUD_ID,
-          username: process.env.ELASTICSEARCH_USERNAME,
-          password: process.env.ELASTICSEARCH_PASSWORD
-        }
-      });
-      console.log('🔧 Elasticsearch configured for Elastic Cloud');
     } else if (process.env.ELASTICSEARCH_URL) {
       // Use custom URL with auth
       this.client = new Client({
