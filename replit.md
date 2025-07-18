@@ -20,6 +20,10 @@ A React-based Discord message viewer application that allows users to search and
 - Updated all components to use shared schema types
 - Removed React imports (handled by Vite automatically)
 - Added proper dark mode support with CSS variables
+- Added Elasticsearch integration for fast message searching
+- Created migration script to convert JSON data to Elasticsearch
+- Implemented search API endpoints with filtering and pagination
+- Added frontend hooks and services for Elasticsearch integration
 
 ## Features
 - Search messages by content, author, channel, or guild

@@ -1,0 +1,266 @@
+import { Client } from '@elastic/elasticsearch';
+import { DiscordMessage } from '@shared/schema';
+
+export class ElasticsearchService {
+  private client: Client;
+  private readonly INDEX_NAME = 'discord-messages';
+
+  constructor() {
+    // Initialize Elasticsearch client
+    // For production, use environment variables for connection details
+    const elasticsearchUrl = process.env.ELASTICSEARCH_URL || 'http://localhost:9200';
+    
+    this.client = new Client({
+      node: elasticsearchUrl,
+      // Add authentication if needed
+      auth: process.env.ELASTICSEARCH_AUTH ? {
+        username: process.env.ELASTICSEARCH_USERNAME || 'elastic',
+        password: process.env.ELASTICSEARCH_PASSWORD || ''
+      } : undefined,
+      // For cloud providers like Elastic Cloud
+      cloud: process.env.ELASTICSEARCH_CLOUD_ID ? {
+        id: process.env.ELASTICSEARCH_CLOUD_ID,
+        username: process.env.ELASTICSEARCH_USERNAME || 'elastic',
+        password: process.env.ELASTICSEARCH_PASSWORD || ''
+      } : undefined
+    });
+  }
+
+  async checkConnection(): Promise<boolean> {
+    try {
+      await this.client.ping();
+      console.log('✅ Elasticsearch connection successful');
+      return true;
+    } catch (error) {
+      console.error('❌ Elasticsearch connection failed:', error);
+      return false;
+    }
+  }
+
+  async createIndex(): Promise<void> {
+    try {
+      const exists = await this.client.indices.exists({ index: this.INDEX_NAME });
+      
+      if (!exists) {
+        await this.client.indices.create({
+          index: this.INDEX_NAME,
+          body: {
+            mappings: {
+              properties: {
+                message_id: { type: 'keyword' },
+                content: { 
+                  type: 'text',
+                  analyzer: 'standard',
+                  search_analyzer: 'standard'
+                },
+                author_id: { type: 'keyword' },
+                channel_id: { type: 'keyword' },
+                guild_id: { type: 'keyword' },
+                timestamp: { type: 'date' },
+                // Additional fields for search optimization
+                content_length: { type: 'integer' },
+                has_content: { type: 'boolean' },
+                // For faceted search
+                author_name: { type: 'keyword' },
+                channel_name: { type: 'keyword' },
+                guild_name: { type: 'keyword' }
+              }
+            },
+            settings: {
+              number_of_shards: 1,
+              number_of_replicas: 0,
+              analysis: {
+                analyzer: {
+                  discord_analyzer: {
+                    type: 'custom',
+                    tokenizer: 'standard',
+                    filter: ['lowercase', 'stop', 'snowball']
+                  }
+                }
+              }
+            }
+          }
+        });
+        console.log(`✅ Created index: ${this.INDEX_NAME}`);
+      } else {
+        console.log(`📋 Index already exists: ${this.INDEX_NAME}`);
+      }
+    } catch (error) {
+      console.error('❌ Error creating index:', error);
+      throw error;
+    }
+  }
+
+  async indexMessage(message: DiscordMessage): Promise<void> {
+    try {
+      await this.client.index({
+        index: this.INDEX_NAME,
+        id: message.message_id,
+        body: {
+          ...message,
+          content_length: message.content.length,
+          has_content: message.content.length > 0,
+          // Add timestamp as proper date
+          timestamp: new Date(message.timestamp).toISOString()
+        }
+      });
+    } catch (error) {
+      console.error(`❌ Error indexing message ${message.message_id}:`, error);
+      throw error;
+    }
+  }
+
+  async bulkIndexMessages(messages: DiscordMessage[]): Promise<void> {
+    try {
+      const body = messages.flatMap(message => [
+        { index: { _index: this.INDEX_NAME, _id: message.message_id } },
+        {
+          ...message,
+          content_length: message.content.length,
+          has_content: message.content.length > 0,
+          timestamp: new Date(message.timestamp).toISOString()
+        }
+      ]);
+
+      const response = await this.client.bulk({ body });
+      
+      if (response.errors) {
+        console.error('❌ Bulk indexing errors:', response.items);
+        throw new Error('Bulk indexing failed');
+      }
+      
+      console.log(`✅ Bulk indexed ${messages.length} messages`);
+    } catch (error) {
+      console.error('❌ Error bulk indexing messages:', error);
+      throw error;
+    }
+  }
+
+  async searchMessages(query: {
+    content?: string;
+    author_id?: string;
+    channel_id?: string;
+    guild_id?: string;
+    from?: number;
+    size?: number;
+    sort?: 'timestamp' | 'relevance';
+  }): Promise<{
+    messages: DiscordMessage[];
+    total: number;
+    took: number;
+  }> {
+    try {
+      const must: any[] = [];
+      const filter: any[] = [];
+
+      // Content search with fuzzy matching
+      if (query.content) {
+        must.push({
+          multi_match: {
+            query: query.content,
+            fields: ['content^2'], // Boost content field
+            type: 'best_fields',
+            fuzziness: 'AUTO'
+          }
+        });
+      }
+
+      // Exact filters
+      if (query.author_id) {
+        filter.push({ term: { author_id: query.author_id } });
+      }
+      if (query.channel_id) {
+        filter.push({ term: { channel_id: query.channel_id } });
+      }
+      if (query.guild_id) {
+        filter.push({ term: { guild_id: query.guild_id } });
+      }
+
+      const sortOrder = query.sort === 'relevance' ? '_score' : { timestamp: { order: 'desc' } };
+
+      const searchBody = {
+        query: {
+          bool: {
+            must: must.length > 0 ? must : [{ match_all: {} }],
+            filter: filter.length > 0 ? filter : undefined
+          }
+        },
+        sort: [sortOrder],
+        from: query.from || 0,
+        size: query.size || 50,
+        highlight: {
+          fields: {
+            content: {
+              fragment_size: 150,
+              number_of_fragments: 1
+            }
+          }
+        }
+      };
+
+      const response = await this.client.search({
+        index: this.INDEX_NAME,
+        body: searchBody
+      });
+
+      const messages = response.hits.hits.map((hit: any) => ({
+        ...hit._source,
+        // Include highlight if available
+        _highlight: hit.highlight
+      }));
+
+      return {
+        messages,
+        total: response.hits.total.value,
+        took: response.took
+      };
+    } catch (error) {
+      console.error('❌ Error searching messages:', error);
+      throw error;
+    }
+  }
+
+  async getMessageStats(): Promise<{
+    total_messages: number;
+    unique_authors: number;
+    unique_channels: number;
+    unique_guilds: number;
+  }> {
+    try {
+      const response = await this.client.search({
+        index: this.INDEX_NAME,
+        body: {
+          size: 0,
+          aggs: {
+            total_messages: { value_count: { field: 'message_id' } },
+            unique_authors: { cardinality: { field: 'author_id' } },
+            unique_channels: { cardinality: { field: 'channel_id' } },
+            unique_guilds: { cardinality: { field: 'guild_id' } }
+          }
+        }
+      });
+
+      return {
+        total_messages: response.aggregations.total_messages.value,
+        unique_authors: response.aggregations.unique_authors.value,
+        unique_channels: response.aggregations.unique_channels.value,
+        unique_guilds: response.aggregations.unique_guilds.value
+      };
+    } catch (error) {
+      console.error('❌ Error getting message stats:', error);
+      throw error;
+    }
+  }
+
+  async deleteIndex(): Promise<void> {
+    try {
+      await this.client.indices.delete({ index: this.INDEX_NAME });
+      console.log(`✅ Deleted index: ${this.INDEX_NAME}`);
+    } catch (error) {
+      console.error('❌ Error deleting index:', error);
+      throw error;
+    }
+  }
+}
+
+export const elasticsearchService = new ElasticsearchService();

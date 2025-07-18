@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, Filter, X, Zap } from 'lucide-react';
+import { Search, Filter, X, Zap, Database } from 'lucide-react';
 import { SearchFilters } from '@shared/schema';
 
 interface SearchInterfaceProps {

@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { elasticsearchService } from "./elasticsearch";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Discord API routes
@@ -79,6 +80,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Health check endpoint
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok" });
+  });
+
+  // Elasticsearch search routes
+  app.get("/api/search/messages", async (req, res) => {
+    try {
+      const {
+        q: content,
+        author_id,
+        channel_id,
+        guild_id,
+        page = 1,
+        size = 50,
+        sort = 'timestamp'
+      } = req.query;
+
+      const from = (parseInt(page as string) - 1) * parseInt(size as string);
+      
+      const results = await elasticsearchService.searchMessages({
+        content: content as string,
+        author_id: author_id as string,
+        channel_id: channel_id as string,
+        guild_id: guild_id as string,
+        from,
+        size: parseInt(size as string),
+        sort: sort as 'timestamp' | 'relevance'
+      });
+
+      res.json({
+        messages: results.messages,
+        total: results.total,
+        page: parseInt(page as string),
+        size: parseInt(size as string),
+        took: results.took
+      });
+    } catch (error) {
+      console.error('Search error:', error);
+      res.status(500).json({ error: 'Search failed' });
+    }
+  });
+
+  // Get message statistics
+  app.get("/api/search/stats", async (req, res) => {
+    try {
+      const stats = await elasticsearchService.getMessageStats();
+      res.json(stats);
+    } catch (error) {
+      console.error('Stats error:', error);
+      res.status(500).json({ error: 'Failed to get stats' });
+    }
+  });
+
+  // Check Elasticsearch connection
+  app.get("/api/search/health", async (req, res) => {
+    try {
+      const isConnected = await elasticsearchService.checkConnection();
+      res.json({ 
+        connected: isConnected,
+        service: 'elasticsearch',
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        connected: false,
+        service: 'elasticsearch',
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
   });
 
   const httpServer = createServer(app);
