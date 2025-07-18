@@ -35,12 +35,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const userData = await discordResponse.json();
       
-      // Return user data
+      // Construct avatar URL
+      const avatarSize = size || 128;
+      let avatarUrl = `https://cdn.discordapp.com/embed/avatars/${userData.discriminator % 5}.png`;
+      
+      if (userData.avatar) {
+        const extension = userData.avatar.startsWith('a_') ? 'gif' : 'png';
+        avatarUrl = `https://cdn.discordapp.com/avatars/${userData.id}/${userData.avatar}.${extension}?size=${avatarSize}`;
+      }
+      
+      // Return user data with proper avatar URL
       res.json({
         id: userData.id,
         username: userData.username,
         discriminator: userData.discriminator,
         avatar: userData.avatar,
+        avatar_url: avatarUrl,
         global_name: userData.global_name,
         bot: userData.bot,
         system: userData.system,

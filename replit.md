@@ -11,10 +11,15 @@ A React-based Discord message viewer application that allows users to search and
 - **Theme**: Dark/light mode support
 
 ## Recent Changes
-- 2025-01-18: Migrated from Bolt to Replit environment
+- 2025-01-18: Successfully migrated from Bolt to Replit environment
 - Adapted build configuration for Replit hosting
 - Updated server configuration for proper port binding (0.0.0.0:5000)
 - Maintained client-side data processing architecture
+- Implemented Discord API backend routes with proper authentication
+- Fixed avatar URL generation using Discord CDN
+- Updated all components to use shared schema types
+- Removed React imports (handled by Vite automatically)
+- Added proper dark mode support with CSS variables
 
 ## Features
 - Search messages by content, author, channel, or guild
