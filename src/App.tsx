@@ -9,13 +9,71 @@ import DiscordUserCard from './components/DiscordUserCard';
 import { useTheme } from './hooks/useTheme';
 
 // Import all message chunks
+import messages1 from './data/discord_messages1.json';
+import messages2 from './data/discord_messages2.json';
+import messages3 from './data/discord_messages3.json';
+import messages4 from './data/discord_messages4.json';
+import messages5 from './data/discord_messages5.json';
+import messages6 from './data/discord_messages6.json';
+import messages7 from './data/discord_messages7.json';
+import messages8 from './data/discord_messages8.json';
+import messages9 from './data/discord_messages9.json';
+import messages10 from './data/discord_messages10.json';
+import messages11 from './data/discord_messages11.json';
+import messages12 from './data/discord_messages12.json';
+import messages13 from './data/discord_messages13.json';
+import messages14 from './data/discord_messages14.json';
+import messages15 from './data/discord_messages15.json';
+import messages16 from './data/discord_messages16.json';
+import messages17 from './data/discord_messages17.json';
+import messages18 from './data/discord_messages18.json';
 import messages19 from './data/discord_messages19.json';
 import messages20 from './data/discord_messages20.json';
+import messages21 from './data/discord_messages21.json';
+import messages22 from './data/discord_messages22.json';
+import messages23 from './data/discord_messages23.json';
+import messages24 from './data/discord_messages24.json'; 
+import messages25 from './data/discord_messages25.json';
+import messages26 from './data/discord_messages26.json';
+import messages27 from './data/discord_messages27.json';
+import messages28 from './data/discord_messages28.json'; 
+import messages29 from './data/discord_messages29.json';
+import messages30 from './data/discord_messages30.json';
+import messages31 from './data/discord_messages31.json';
 
 // Combine all message chunks and sort by timestamp (newest first)
 const messagesData = [
+  ...messages1,
+  ...messages2,
+  ...messages3,
+  ...messages4,
+  ...messages5,
+  ...messages6,
+  ...messages7,
+  ...messages8,
+  ...messages9,
+  ...messages10,
+  ...messages11,
+  ...messages12,
+  ...messages13,
+  ...messages14,
+  ...messages15,
+  ...messages16,
+  ...messages17,
+  ...messages18,
   ...messages19,
   ...messages20,
+  ...messages21,
+  ...messages22,
+  ...messages23,
+  ...messages24,
+  ...messages25,
+  ...messages26,
+  ...messages27,
+  ...messages28,
+  ...messages29,
+  ...messages30,
+  ...messages31,
 ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
 const MESSAGES_PER_PAGE = 50;

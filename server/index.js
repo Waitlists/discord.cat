@@ -386,8 +386,13 @@ app.get('/api/cache/stats', (req, res) => {
 // Static files from React build
 app.use(express.static(path.join(__dirname, "../dist")));
 // For any other route, serve SPA index.html
-app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "../dist/index.html"));
+app.get("*", (req, res, next) => {
+  // Only serve index.html for GET requests that do not match the API routes
+  if (req.method === "GET" && !req.path.startsWith("/api/")) {
+    res.sendFile(path.join(__dirname, "../dist/index.html"));
+  } else {
+    next();
+  }
 });
 
 // ==== ERROR HANDLING ====
