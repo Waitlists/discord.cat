@@ -101,7 +101,8 @@ const DiscordUserProfile: React.FC<DiscordUserProfileProps> = ({
     displayName,
     fullUsername,
     avatarUrl,
-    hasAvatar: !!user.avatar
+    hasAvatar: !!user.avatar,
+    avatarHash: user.avatar
   });
 
   return (

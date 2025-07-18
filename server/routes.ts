@@ -37,12 +37,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Construct avatar URL
       const avatarSize = size || 128;
-      let avatarUrl = `https://cdn.discordapp.com/embed/avatars/${userData.discriminator % 5}.png`;
+      let avatarUrl;
       
       if (userData.avatar) {
+        // User has custom avatar
         const extension = userData.avatar.startsWith('a_') ? 'gif' : 'png';
         avatarUrl = `https://cdn.discordapp.com/avatars/${userData.id}/${userData.avatar}.${extension}?size=${avatarSize}`;
+      } else {
+        // Use default avatar - for new usernames (discriminator 0) use user ID modulo, for legacy use discriminator
+        const defaultAvatarId = userData.discriminator === '0' 
+          ? (BigInt(userData.id) >> 22n) % 6n 
+          : parseInt(userData.discriminator) % 5;
+        avatarUrl = `https://cdn.discordapp.com/embed/avatars/${defaultAvatarId}.png`;
       }
+      
+      // Log avatar URL construction for debugging
+      console.log(`Avatar URL constructed for ${userData.id}: ${avatarUrl}`);
       
       // Return user data with proper avatar URL
       res.json({
@@ -54,7 +64,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         global_name: userData.global_name,
         bot: userData.bot,
         system: userData.system,
-        public_flags: userData.public_flags
+        public_flags: userData.public_flags,
+        banner: userData.banner,
+        banner_color: userData.banner_color,
+        accent_color: userData.accent_color,
+        avatar_decoration: userData.avatar_decoration
       });
     } catch (error) {
       console.error("Discord API error:", error);
