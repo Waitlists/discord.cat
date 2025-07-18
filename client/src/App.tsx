@@ -118,7 +118,7 @@ function App() {
             Discord.cat
           </h1>
           <p className="text-xl text-gray-600 dark:text-gray-400 max-w-3xl mx-auto mb-8 leading-relaxed">
-            Lightning-fast Discord message search powered by Elasticsearch. Find conversations, analyze patterns, and explore your Discord history with precision.
+            Lightning-fast Discord message search powered by Elasticsearch. Find conversations, analyze patterns, and explore your Discord history with precision. All data is stored and retrieved from Elasticsearch Cloud.
           </p>
           {results && (
             <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 max-w-2xl mx-auto mb-8">
@@ -248,6 +248,7 @@ function App() {
               <p className="text-gray-600 dark:text-gray-400 mb-6">
                 Use the search interface above to find messages by content, author, channel, or server.
                 Elasticsearch provides lightning-fast results with fuzzy matching and advanced filtering.
+                All {stats?.totalMessages || 0} messages are stored in Elasticsearch Cloud.
               </p>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                 <div className="bg-white dark:bg-gray-700 p-4 rounded-lg">

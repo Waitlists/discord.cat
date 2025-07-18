@@ -48,11 +48,11 @@ A React-based Discord message viewer application that allows users to search and
 - Theme: Dark/light mode toggle available
 
 ## Data Structure
-- Message data is stored in Elasticsearch Cloud
-- 46 messages imported from JSON files with full metadata
-- Types defined in client/src/types/index.ts
-- Data processing handled by Elasticsearch with lightning-fast queries
-- Statistics calculated using Elasticsearch aggregations
+- All message data is stored in Elasticsearch Cloud (46 messages)
+- Types defined in client/src/types/index.ts and shared/schema.ts
+- Data processing handled entirely by Elasticsearch with lightning-fast queries
+- Statistics calculated using Elasticsearch aggregations in real-time
+- No local JSON files - pure Elasticsearch integration
 
 ## Development Setup
 - Run `npm run dev` to start development server
